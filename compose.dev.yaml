@@ -1,3 +1,4 @@
+# 开发/本地测试使用，直接暴露端口，不安全，请勿在生产环境使用
 services:
   sub-store:
     env_file:

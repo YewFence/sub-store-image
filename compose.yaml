@@ -1,0 +1,77 @@
+services:
+  sub-store:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        FRONTEND_API_BASE: ${SUB_STORE_FRONTEND_BACKEND_PATH:-/backend}
+        FRONTEND_PUBLIC_PATH: ${FRONTEND_PUBLIC_PATH:-/}
+    container_name: sub-store
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - sub-store-internal
+
+  admin-proxy:
+    build:
+      context: ./deploy/admin-proxy
+    container_name: sub-store-admin-proxy
+    restart: unless-stopped
+    depends_on:
+      - sub-store
+    environment:
+      ADMIN_SERVER_NAME: ${SUB_STORE_ADMIN_SERVER_NAME:-_}
+      ADMIN_ENABLE_TLS: ${SUB_STORE_ADMIN_ENABLE_TLS:-false}
+      ADMIN_TLS_CERT_PATH: ${SUB_STORE_ADMIN_TLS_CERT_PATH:-/certs/admin.crt}
+      ADMIN_TLS_KEY_PATH: ${SUB_STORE_ADMIN_TLS_KEY_PATH:-/certs/admin.key}
+      ADMIN_UPSTREAM: http://sub-store:3000
+    ports:
+      - "${TS_BIND_IP:-127.0.0.1}:${SUB_STORE_ADMIN_HTTP_PORT:-38080}:80"
+      - "${TS_BIND_IP:-127.0.0.1}:${SUB_STORE_ADMIN_HTTPS_PORT:-38443}:443"
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      - sub-store-internal
+
+  feed-proxy:
+    build:
+      context: ./deploy/feed-proxy
+    container_name: sub-store-feed-proxy
+    restart: unless-stopped
+    depends_on:
+      - sub-store
+    profiles:
+      - public
+    environment:
+      FEED_SERVER_NAME: ${SUB_STORE_FEED_SERVER_NAME:-_}
+      FEED_PUBLIC_PATH: ${SUB_STORE_FEED_PUBLIC_PATH:-/yew-rhizome}
+      FEED_TOKEN: ${SUB_STORE_FEED_TOKEN:-}
+      FEED_UPSTREAM: http://sub-store:3000${SUB_STORE_FEED_UPSTREAM_PATH:-/backend/api/file/yew-rhizome}
+    networks:
+      - sub-store-internal
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: sub-store-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - feed-proxy
+    profiles:
+      - public
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARED_TUNNEL_TOKEN:-}
+    networks:
+      - sub-store-internal
+
+networks:
+  sub-store-internal:
+    driver: bridge

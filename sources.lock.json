@@ -1,0 +1,20 @@
+{
+  "sources": [
+    {
+      "name": "backend",
+      "depName": "sub-store-org/Sub-Store",
+      "datasource": "github-releases",
+      "versioning": "semver",
+      "currentValue": "2.21.71",
+      "cloneDir": "Sub-Store"
+    },
+    {
+      "name": "frontend",
+      "depName": "sub-store-org/Sub-Store-Front-End",
+      "datasource": "github-releases",
+      "versioning": "semver",
+      "currentValue": "2.16.39",
+      "cloneDir": "Sub-Store-Front-End"
+    }
+  ]
+}

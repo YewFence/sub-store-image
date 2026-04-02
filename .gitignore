@@ -1,0 +1,23 @@
+# Local upstream source checkouts
+Sub-Store/
+Sub-Store-Front-End/
+
+# Local runtime data
+data/
+mmdb/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Local generated references
+openapi.json
+
+# Dependency and build artifacts
+**/node_modules/
+**/dist/
+
+# OS cruft
+.DS_Store
+Thumbs.db

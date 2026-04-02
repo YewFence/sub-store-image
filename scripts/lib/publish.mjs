@@ -95,6 +95,8 @@ export function buildImageLabels(
     "org.opencontainers.image.source": metadata.repoSourceUrl,
     "org.opencontainers.image.url": resolvedReleaseUrl,
     "org.opencontainers.image.created": createdAt,
+    "org.opencontainers.image.licenses": "AGPL-3.0, MIT",
+    "org.opencontainers.image.ref.name": buildTag,
     "io.github.sub-store.build.tag": buildTag,
     "io.github.sub-store.build.release-url": resolvedReleaseUrl,
     "io.github.sub-store.backend.repo": metadata.backend.depName,
@@ -102,11 +104,17 @@ export function buildImageLabels(
     "io.github.sub-store.backend.tag": metadata.backend.resolvedTag,
     "io.github.sub-store.backend.release-url": metadata.backend.releaseUrl,
     "io.github.sub-store.backend.sha": metadata.backend.sha,
+    "io.github.sub-store.backend.license": "AGPL-3.0",
+    "io.github.sub-store.backend.source-url": `https://github.com/${metadata.backend.depName}/tree/${metadata.backend.sha}`,
+    "io.github.sub-store.backend.source-archive": `https://github.com/${metadata.backend.depName}/archive/${metadata.backend.sha}.tar.gz`,
     "io.github.sub-store.frontend.repo": metadata.frontend.depName,
     "io.github.sub-store.frontend.version": metadata.frontend.currentValue,
     "io.github.sub-store.frontend.tag": metadata.frontend.resolvedTag,
     "io.github.sub-store.frontend.release-url": metadata.frontend.releaseUrl,
     "io.github.sub-store.frontend.sha": metadata.frontend.sha,
+    "io.github.sub-store.frontend.license": "AGPL-3.0",
+    "io.github.sub-store.frontend.source-url": `https://github.com/${metadata.frontend.depName}/tree/${metadata.frontend.sha}`,
+    "io.github.sub-store.frontend.source-archive": `https://github.com/${metadata.frontend.depName}/archive/${metadata.frontend.sha}.tar.gz`,
   };
 }
 

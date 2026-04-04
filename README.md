@@ -13,8 +13,8 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/yewfence/sub-store.git
-cd sub-store
+git clone https://github.com/YewFence/sub-store-image.git
+cd sub-store-image
 ```
 
 ### 2. 准备环境变量
@@ -68,6 +68,8 @@ docker compose --profile public up -d --build
 启动方式：
 
 ```bash
+just sync
+just licenses
 docker compose -f compose.dev.yaml up -d --build
 ```
 
@@ -251,16 +253,16 @@ GitHub 的自动化配置，详见：
 
 本仓库的构建脚本、配置文件及相关文档以 **[MIT License](LICENSE)** 开源。
 
-但请注意：**通过本仓库构建或分发的预构建 Docker 镜像以 AGPL-3.0 许可证分发**。
+但请注意：**通过本仓库构建或分发的预构建 Docker 镜像包含受各自许可证约束的上游组件**。镜像构建时会把第三方许可证文件和 `NOTICE.txt` 一起打进 `/usr/share/licenses/sub-store/`，仓库里的说明见 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)。
 
 ## 上游归属与许可证
 
-发布的镜像包含以下上游项目，均基于 **GNU Affero General Public License v3.0**：
+发布的镜像包含以下上游项目，它们分别受各自的 copyleft 许可证约束：
 
 | 组件 | 上游仓库 | 许可证 |
 |------|----------|--------|
 | **Sub-Store 后端** | [sub-store-org/Sub-Store](https://github.com/sub-store-org/Sub-Store) | AGPL-3.0 |
-| **Sub-Store 前端** | [sub-store-org/Sub-Store-Front-End](https://github.com/sub-store-org/Sub-Store-Front-End) | AGPL-3.0 |
+| **Sub-Store 前端** | [sub-store-org/Sub-Store-Front-End](https://github.com/sub-store-org/Sub-Store-Front-End) | GPL-3.0 |
 
 感谢这些项目的开发者和维护者
 
@@ -272,10 +274,10 @@ GitHub 的自动化配置，详见：
 
 ### 用户权利与义务
 
-根据 AGPL-3.0，使用本镜像时：
+根据这些许可证，使用本镜像时：
 
 1. **你有权获得源代码**：可通过上方链接获取各组件的完整源码
-2. **你有权修改和再分发**：但修改后的版本也必须以 AGPL-3.0 开源
-3. **网络使用即分发**：如果你将本镜像部署在提供服务的服务器上，访问者有权获得源代码
+2. **你有权修改和再分发**：但修改后的版本仍需遵守对应上游组件的许可证要求
+3. **如果涉及网络服务或再分发**：还需要额外留意 AGPL / GPL 对源码提供与许可证保留的要求
 
-如需了解完整的许可证条款，请参阅 [GNU AGPL v3.0 全文](https://www.gnu.org/licenses/agpl-3.0.html)。
+如需了解完整条款，请参阅镜像内附带的许可证文件，或直接查看 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) 里的链接。

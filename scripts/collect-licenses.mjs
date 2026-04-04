@@ -1,16 +1,41 @@
-import { copyFile, mkdir, access, writeFile } from "fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { resolve, join } from "path";
-import { repoRoot, resolveCloneDir, readLockfile } from "./lib/upstreams.mjs";
+import { pathExists, repoRoot, resolveCloneDir, readLockfile } from "./lib/upstreams.mjs";
 
 const licensesDir = resolve(repoRoot, "licenses");
 
-async function pathExists(path) {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
+function detectLicenseId(licenseText) {
+  const spdxMatch = licenseText.match(/SPDX-License-Identifier:\s*([^\s]+)/i);
+  if (spdxMatch) {
+    return spdxMatch[1];
   }
+
+  const normalized = licenseText.toUpperCase();
+  const header = normalized.slice(0, 4096);
+
+  if (header.includes("GNU AFFERO GENERAL PUBLIC LICENSE")) {
+    return "AGPL-3.0";
+  }
+  if (header.includes("GNU GENERAL PUBLIC LICENSE")) {
+    return "GPL-3.0";
+  }
+  if (header.includes("APACHE LICENSE") && header.includes("VERSION 2.0")) {
+    return "Apache-2.0";
+  }
+  if (header.includes("MIT LICENSE")) {
+    return "MIT";
+  }
+  if (header.includes("MOZILLA PUBLIC LICENSE") && header.includes("2.0")) {
+    return "MPL-2.0";
+  }
+  if (header.includes("BSD 3-CLAUSE")) {
+    return "BSD-3-Clause";
+  }
+  if (header.includes("BSD 2-CLAUSE")) {
+    return "BSD-2-Clause";
+  }
+
+  return "UNKNOWN";
 }
 
 async function collectLicense(source) {
@@ -36,8 +61,7 @@ async function collectLicense(source) {
   }
 
   if (!foundLicense) {
-    console.warn(`[licenses] 警告: ${source.depName} 未找到 LICENSE 文件`);
-    return null;
+    throw new Error(`${source.depName} 未找到 LICENSE/COPYING 文件`);
   }
 
   // 创建目标文件名，避免冲突
@@ -45,11 +69,16 @@ async function collectLicense(source) {
   const ext = foundLicense.endsWith(".md") ? ".md" : foundLicense.endsWith(".txt") ? ".txt" : "";
   const targetName = `${safeName}-LICENSE${ext}`;
   const targetPath = join(licensesDir, targetName);
+  const licenseText = await readFile(foundLicense, "utf8");
+  const licenseId = detectLicenseId(licenseText);
 
   await copyFile(foundLicense, targetPath);
-  console.log(`[licenses] 已收集 ${source.depName} 的许可证 -> ${targetName}`);
+  console.log(`[licenses] 已收集 ${source.depName} 的许可证 -> ${targetName} (${licenseId})`);
 
-  return targetName;
+  return {
+    fileName: targetName,
+    licenseId,
+  };
 }
 
 async function generateNotice(sources, collected) {
@@ -64,14 +93,14 @@ async function generateNotice(sources, collected) {
 
   for (let i = 0; i < sources.length; i++) {
     const source = sources[i];
-    const licenseFile = collected[i];
+    const collectedLicense = collected[i];
 
     lines.push(`  ${i + 1}. ${source.name}`);
     lines.push(`     Repository: https://github.com/${source.depName}`);
     lines.push(`     Version: ${source.currentValue}`);
-    lines.push(`     License: GNU Affero General Public License v3.0 (AGPL-3.0)`);
-    if (licenseFile) {
-      lines.push(`     License File: /usr/share/licenses/sub-store/${licenseFile}`);
+    lines.push(`     License: ${collectedLicense?.licenseId ?? "UNKNOWN"}`);
+    if (collectedLicense?.fileName) {
+      lines.push(`     License File: /usr/share/licenses/sub-store/${collectedLicense.fileName}`);
     }
     lines.push("");
   }
@@ -81,9 +110,7 @@ async function generateNotice(sources, collected) {
   lines.push("The complete source code of these projects can be obtained from their");
   lines.push("respective repositories listed above.");
   lines.push("");
-  lines.push("For the full text of the GNU Affero General Public License v3.0, see:");
-  lines.push("https://www.gnu.org/licenses/agpl-3.0.html");
-  lines.push("or check the license files included in this directory.");
+  lines.push("Refer to the included license files for the authoritative upstream license terms.");
   lines.push("");
   lines.push("================================================================================");
 

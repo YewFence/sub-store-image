@@ -16,7 +16,7 @@
 
 ## TL;DR
 
-只看第一步安装 Renovate App 就能让这套自动化跑起来了，记得别开分支保护，后续步骤都是原理说明
+至少完成 1~3 步后再启用自动化。建议保留分支保护；如果 `automergeType=branch` 和你的保护策略冲突，就改用 PR automerge，或者给 Renovate 配受控的绕过权限。后续步骤主要是原理说明。
 
 ## 1. 安装 Renovate App
 

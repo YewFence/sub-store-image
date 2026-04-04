@@ -44,6 +44,7 @@ jobs:
       - name: Collect upstream licenses
         id: licenses
         if: steps.sync.outcome == 'success'
+        continue-on-error: true
         run: node scripts/collect-licenses.mjs
 
       - name: Resolve publish metadata
@@ -60,7 +61,7 @@ jobs:
 
       - name: Login to GHCR
         id: login
-        if: steps.publish_meta.outcome == 'success'
+        if: steps.publish_meta.outcome == 'success' && steps.licenses.outcome == 'success'
         continue-on-error: true
         uses: docker/login-action@v3
         with:
@@ -183,8 +184,8 @@ jobs:
             failure_type="automation-error"
             failed_step="sync"
           elif [[ "${{ steps.licenses.outcome }}" == "failure" ]]; then
-            # 许可证收集失败是警告级别，不阻断发布
-            echo "::warning::License collection failed but continuing with publish"
+            failure_type="automation-error"
+            failed_step="licenses"
           elif [[ "${{ steps.publish_meta.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="publish_meta"
@@ -253,7 +254,7 @@ jobs:
               `- Run: ${runUrl}`,
             ].join('\n');
 
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',

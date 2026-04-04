@@ -13,7 +13,14 @@ export const dockerBin = process.env.DOCKER_BIN || "docker";
 
 export async function readLockfile() {
   const raw = await readFile(lockfilePath, "utf8");
-  const parsed = JSON.parse(raw);
+  let parsed;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`解析 sources.lock.json 失败: ${error.message}`);
+  }
+
   const { sources } = parsed;
 
   if (!Array.isArray(sources) || sources.length === 0) {

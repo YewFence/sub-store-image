@@ -25,10 +25,14 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const current = argv[index];
     if (current === "--tag") {
-      const tag = normalizeTagValue(argv[index + 1]);
+      const rawTag = argv[index + 1];
+      if (rawTag == null) {
+        throw new Error("--tag 后面缺少镜像名");
+      }
+
+      const tag = normalizeTagValue(rawTag);
       if (tag == null) {
-        index += 1;
-        continue;
+        throw new Error(`--tag 参数不合法: ${rawTag}`);
       }
       if (!tag) {
         throw new Error("--tag 后面缺少镜像名");

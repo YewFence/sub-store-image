@@ -32,6 +32,12 @@ jobs:
         continue-on-error: true
         run: node scripts/sync-upstreams.mjs
 
+      - name: Collect upstream licenses
+        id: licenses
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/collect-licenses.mjs
+
       - name: Resolve upstream metadata
         id: metadata
         if: steps.sync.outcome == 'success'
@@ -41,7 +47,7 @@ jobs:
 
       - name: Build smoke image
         id: build
-        if: steps.metadata.outcome == 'success'
+        if: steps.metadata.outcome == 'success' && steps.licenses.outcome == 'success'
         continue-on-error: true
         run: node scripts/docker-build.mjs --tag sub-store-ci:${{ github.run_id }}
 
@@ -62,6 +68,9 @@ jobs:
           if [[ "${{ steps.sync.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="sync"
+          elif [[ "${{ steps.licenses.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="licenses"
           elif [[ "${{ steps.metadata.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="metadata"
@@ -119,7 +128,7 @@ jobs:
               `- Run: ${runUrl}`,
             ].join('\n');
 
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',

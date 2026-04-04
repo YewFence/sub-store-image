@@ -1,10 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { dockerBin, parseNamedAssignment, runCommand } from "./lib/upstreams.mjs";
 
 const defaultArgs = {
   image: "sub-store:dev",
-  port: "38080",
+  port: 38080,
   timeoutMs: 90000,
 };
+const requestTimeoutMs = 5000;
 
 function assignOptionValue(args, expectedKey, rawValue, aliasedKeys) {
   if (rawValue == null) {
@@ -63,16 +65,38 @@ function parseArgs(argv) {
       continue;
     }
     if (current === "--timeout-ms") {
-      const timeoutMs = Number(argv[index + 1]);
-      if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-        throw new Error("--timeout-ms 必须是正整数");
-      }
-      args.timeoutMs = timeoutMs;
+      args.timeoutMs = parseIntegerOption(argv[index + 1], "--timeout-ms");
       index += 1;
     }
   }
 
+  args.port = parseIntegerOption(args.port, "--port", { min: 1, max: 65535 });
+
   return args;
+}
+
+function parseIntegerOption(rawValue, optionName, { min = 1, max } = {}) {
+  const text = String(rawValue ?? "").trim();
+  if (!/^\d+$/.test(text)) {
+    throw new Error(`${optionName} 必须是正整数`);
+  }
+
+  const value = Number(text);
+  if (!Number.isSafeInteger(value) || value < min || (max != null && value > max)) {
+    if (max != null) {
+      throw new Error(`${optionName} 必须是 ${min}-${max} 的正整数`);
+    }
+    throw new Error(`${optionName} 必须是正整数`);
+  }
+
+  return value;
+}
+
+function fetchWithTimeout(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  });
 }
 
 async function waitFor(url, timeoutMs) {
@@ -80,7 +104,7 @@ async function waitFor(url, timeoutMs) {
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       if (response.ok) {
         return;
       }
@@ -97,7 +121,7 @@ async function waitFor(url, timeoutMs) {
 }
 
 async function assertFrontend(baseUrl) {
-  const response = await fetch(`${baseUrl}/`, { redirect: "manual" });
+  const response = await fetchWithTimeout(`${baseUrl}/`, { redirect: "manual" });
   if (response.status !== 200) {
     throw new Error(`首页状态码不对: ${response.status}`);
   }
@@ -109,17 +133,18 @@ async function assertFrontend(baseUrl) {
 }
 
 async function assertBackend(baseUrl) {
-  const response = await fetch(`${baseUrl}/backend/api/utils/env`);
+  const response = await fetchWithTimeout(`${baseUrl}/backend/api/utils/env`);
   if (response.status !== 200) {
     throw new Error(`/backend/api/utils/env 状态码不对: ${response.status}`);
   }
 
   const text = await response.text();
-  if (!text.includes('"status": "success"')) {
-    throw new Error("/backend/api/utils/env 响应里缺少 status=success");
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error("/backend/api/utils/env 返回的不是合法 JSON");
   }
-
-  const payload = JSON.parse(text);
   if (payload.status !== "success") {
     throw new Error("/backend/api/utils/env 返回的 status 不是 success");
   }
@@ -127,7 +152,7 @@ async function assertBackend(baseUrl) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const containerName = `sub-store-smoke-${Date.now()}`;
+  const containerName = `sub-store-smoke-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const baseUrl = `http://127.0.0.1:${args.port}`;
   let containerStarted = false;
 

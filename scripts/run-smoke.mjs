@@ -1,21 +1,64 @@
-import { dockerBin, runCommand } from "./lib/upstreams.mjs";
+import { dockerBin, parseNamedAssignment, runCommand } from "./lib/upstreams.mjs";
+
+const defaultArgs = {
+  image: "sub-store:dev",
+  port: "38080",
+  timeoutMs: 90000,
+};
+
+function assignOptionValue(args, expectedKey, rawValue, aliasedKeys) {
+  if (rawValue == null) {
+    return;
+  }
+
+  const assignment = parseNamedAssignment(rawValue);
+  if (!assignment) {
+    if (
+      aliasedKeys.has(expectedKey) &&
+      rawValue === String(defaultArgs[expectedKey])
+    ) {
+      return;
+    }
+
+    args[expectedKey] = rawValue;
+    aliasedKeys.delete(expectedKey);
+    return;
+  }
+
+  const assignmentKeyMap = {
+    image: "image",
+    port: "port",
+  };
+  const targetKey = assignmentKeyMap[assignment.name];
+
+  if (!targetKey) {
+    args[expectedKey] = rawValue;
+    aliasedKeys.delete(expectedKey);
+    return;
+  }
+
+  args[targetKey] = assignment.value;
+  if (targetKey !== expectedKey) {
+    aliasedKeys.add(targetKey);
+    return;
+  }
+
+  aliasedKeys.delete(targetKey);
+}
 
 function parseArgs(argv) {
-  const args = {
-    image: "sub-store:dev",
-    port: "38080",
-    timeoutMs: 90000,
-  };
+  const args = { ...defaultArgs };
+  const aliasedKeys = new Set();
 
   for (let index = 0; index < argv.length; index += 1) {
     const current = argv[index];
     if (current === "--image") {
-      args.image = argv[index + 1] ?? args.image;
+      assignOptionValue(args, "image", argv[index + 1], aliasedKeys);
       index += 1;
       continue;
     }
     if (current === "--port") {
-      args.port = argv[index + 1] ?? args.port;
+      assignOptionValue(args, "port", argv[index + 1], aliasedKeys);
       index += 1;
       continue;
     }

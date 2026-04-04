@@ -36,37 +36,22 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Docker Buildx
-        id: buildx
-        continue-on-error: true
-        uses: docker/setup-buildx-action@v3
-
       - name: Sync upstream sources
         id: sync
-        if: steps.buildx.outcome == 'success'
         continue-on-error: true
         run: node scripts/sync-upstreams.mjs
 
-      - name: Resolve upstream metadata
-        id: metadata
+      - name: Resolve publish metadata
+        id: publish_meta
         if: steps.sync.outcome == 'success'
         continue-on-error: true
         shell: bash
-        run: node scripts/upstream-metadata.mjs --format github-output >> "$GITHUB_OUTPUT"
-
-      - name: Prepare publish metadata
-        id: publish_meta
-        if: steps.metadata.outcome == 'success'
-        continue-on-error: true
-        shell: bash
         run: |
-          release_date="$(date -u +%Y.%m.%d)"
-          build_tag="${release_date}.${GITHUB_RUN_NUMBER}"
-          echo "image_name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-          echo "release_date=${release_date}" >> "$GITHUB_OUTPUT"
-          echo "build_tag=${build_tag}" >> "$GITHUB_OUTPUT"
-          echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${build_tag}" >> "$GITHUB_OUTPUT"
+          node scripts/publish-metadata.mjs \
+            --image "ghcr.io/${GITHUB_REPOSITORY,,}" \
+            --build-number "${GITHUB_RUN_NUMBER}" \
+            --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag" \
+            --format github-output >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
         id: login
@@ -82,40 +67,14 @@ jobs:
         id: build_push
         if: steps.login.outcome == 'success'
         continue-on-error: true
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          provenance: false
-          tags: |
-            ${{ steps.publish_meta.outputs.image_name }}:latest
-            ${{ steps.publish_meta.outputs.image_name }}:${{ steps.publish_meta.outputs.build_tag }}
-            ${{ steps.publish_meta.outputs.image_name }}:${{ steps.metadata.outputs.combo_tag }}
-            ${{ steps.publish_meta.outputs.image_name }}:${{ steps.metadata.outputs.version_matrix }}
-            ${{ steps.publish_meta.outputs.image_name }}:${{ steps.metadata.outputs.sha_matrix }}
-          labels: |
-            org.opencontainers.image.title=Sub-Store
-            org.opencontainers.image.description=Sub-Store bundled image ${{ steps.publish_meta.outputs.build_tag }} built from backend ${{ steps.metadata.outputs.backend_version }} and frontend ${{ steps.metadata.outputs.frontend_version }}
-            org.opencontainers.image.version=${{ steps.publish_meta.outputs.build_tag }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.url=${{ steps.publish_meta.outputs.release_url }}
-            org.opencontainers.image.created=${{ steps.publish_meta.outputs.created_at }}
-            io.github.sub-store.build.tag=${{ steps.publish_meta.outputs.build_tag }}
-            io.github.sub-store.build.release-url=${{ steps.publish_meta.outputs.release_url }}
-            io.github.sub-store.backend.repo=${{ steps.metadata.outputs.backend_repo }}
-            io.github.sub-store.backend.version=${{ steps.metadata.outputs.backend_version }}
-            io.github.sub-store.backend.tag=${{ steps.metadata.outputs.backend_tag }}
-            io.github.sub-store.backend.release-url=${{ steps.metadata.outputs.backend_release_url }}
-            io.github.sub-store.backend.sha=${{ steps.metadata.outputs.backend_sha }}
-            io.github.sub-store.frontend.repo=${{ steps.metadata.outputs.frontend_repo }}
-            io.github.sub-store.frontend.version=${{ steps.metadata.outputs.frontend_version }}
-            io.github.sub-store.frontend.tag=${{ steps.metadata.outputs.frontend_tag }}
-            io.github.sub-store.frontend.release-url=${{ steps.metadata.outputs.frontend_release_url }}
-            io.github.sub-store.frontend.sha=${{ steps.metadata.outputs.frontend_sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        shell: bash
+        run: |
+          node scripts/docker-publish.mjs \
+            --image "${{ steps.publish_meta.outputs.image_name }}" \
+            --build-tag "${{ steps.publish_meta.outputs.build_tag }}" \
+            --release-url "${{ steps.publish_meta.outputs.release_url }}" \
+            --push \
+            --format github-output >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub Release
         id: release
@@ -127,19 +86,19 @@ jobs:
           IMAGE_NAME: ${{ steps.publish_meta.outputs.image_name }}
           IMAGE_DIGEST: ${{ steps.build_push.outputs.digest }}
           RELEASE_URL: ${{ steps.publish_meta.outputs.release_url }}
-          COMBO_TAG: ${{ steps.metadata.outputs.combo_tag }}
-          VERSION_MATRIX: ${{ steps.metadata.outputs.version_matrix }}
-          SHA_MATRIX: ${{ steps.metadata.outputs.sha_matrix }}
-          BACKEND_REPO: ${{ steps.metadata.outputs.backend_repo }}
-          BACKEND_VERSION: ${{ steps.metadata.outputs.backend_version }}
-          BACKEND_TAG: ${{ steps.metadata.outputs.backend_tag }}
-          BACKEND_SHA: ${{ steps.metadata.outputs.backend_sha }}
-          BACKEND_RELEASE_URL: ${{ steps.metadata.outputs.backend_release_url }}
-          FRONTEND_REPO: ${{ steps.metadata.outputs.frontend_repo }}
-          FRONTEND_VERSION: ${{ steps.metadata.outputs.frontend_version }}
-          FRONTEND_TAG: ${{ steps.metadata.outputs.frontend_tag }}
-          FRONTEND_SHA: ${{ steps.metadata.outputs.frontend_sha }}
-          FRONTEND_RELEASE_URL: ${{ steps.metadata.outputs.frontend_release_url }}
+          COMBO_TAG: ${{ steps.publish_meta.outputs.combo_tag }}
+          VERSION_MATRIX: ${{ steps.publish_meta.outputs.version_matrix }}
+          SHA_MATRIX: ${{ steps.publish_meta.outputs.sha_matrix }}
+          BACKEND_REPO: ${{ steps.publish_meta.outputs.backend_repo }}
+          BACKEND_VERSION: ${{ steps.publish_meta.outputs.backend_version }}
+          BACKEND_TAG: ${{ steps.publish_meta.outputs.backend_tag }}
+          BACKEND_SHA: ${{ steps.publish_meta.outputs.backend_sha }}
+          BACKEND_RELEASE_URL: ${{ steps.publish_meta.outputs.backend_release_url }}
+          FRONTEND_REPO: ${{ steps.publish_meta.outputs.frontend_repo }}
+          FRONTEND_VERSION: ${{ steps.publish_meta.outputs.frontend_version }}
+          FRONTEND_TAG: ${{ steps.publish_meta.outputs.frontend_tag }}
+          FRONTEND_SHA: ${{ steps.publish_meta.outputs.frontend_sha }}
+          FRONTEND_RELEASE_URL: ${{ steps.publish_meta.outputs.frontend_release_url }}
         with:
           script: |
             const tag = process.env.BUILD_TAG;
@@ -215,15 +174,9 @@ jobs:
           failure_type="success"
           failed_step="none"
 
-          if [[ "${{ steps.buildx.outcome }}" == "failure" ]]; then
-            failure_type="automation-error"
-            failed_step="buildx"
-          elif [[ "${{ steps.sync.outcome }}" == "failure" ]]; then
+          if [[ "${{ steps.sync.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="sync"
-          elif [[ "${{ steps.metadata.outcome }}" == "failure" ]]; then
-            failure_type="automation-error"
-            failed_step="metadata"
           elif [[ "${{ steps.publish_meta.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="publish_meta"
@@ -252,11 +205,11 @@ jobs:
             echo "- Failed step: \`${{ steps.classify.outputs.failed_step }}\`"
             echo "- Build tag: \`${{ steps.publish_meta.outputs.build_tag || 'n/a' }}\`"
             echo "- Release URL: \`${{ steps.publish_meta.outputs.release_url || 'n/a' }}\`"
-            echo "- Combo tag: \`${{ steps.metadata.outputs.combo_tag || 'n/a' }}\`"
-            echo "- Backend: \`${{ steps.metadata.outputs.backend_version || 'n/a' }}\`"
-            echo "- Frontend: \`${{ steps.metadata.outputs.frontend_version || 'n/a' }}\`"
-            echo "- Version matrix: \`${{ steps.metadata.outputs.version_matrix || 'n/a' }}\`"
-            echo "- SHA matrix: \`${{ steps.metadata.outputs.sha_matrix || 'n/a' }}\`"
+            echo "- Combo tag: \`${{ steps.publish_meta.outputs.combo_tag || 'n/a' }}\`"
+            echo "- Backend: \`${{ steps.publish_meta.outputs.backend_version || 'n/a' }}\`"
+            echo "- Frontend: \`${{ steps.publish_meta.outputs.frontend_version || 'n/a' }}\`"
+            echo "- Version matrix: \`${{ steps.publish_meta.outputs.version_matrix || 'n/a' }}\`"
+            echo "- SHA matrix: \`${{ steps.publish_meta.outputs.sha_matrix || 'n/a' }}\`"
             echo "- Image: \`${{ steps.publish_meta.outputs.image_name || 'n/a' }}\`"
             echo "- Digest: \`${{ steps.build_push.outputs.digest || 'n/a' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -266,10 +219,10 @@ jobs:
         uses: actions/github-script@v7
         env:
           FAILED_STEP: ${{ steps.classify.outputs.failed_step }}
-          BACKEND_VERSION: ${{ steps.metadata.outputs.backend_version || 'n/a' }}
-          FRONTEND_VERSION: ${{ steps.metadata.outputs.frontend_version || 'n/a' }}
-          VERSION_MATRIX: ${{ steps.metadata.outputs.version_matrix || 'n/a' }}
-          SHA_MATRIX: ${{ steps.metadata.outputs.sha_matrix || 'n/a' }}
+          BACKEND_VERSION: ${{ steps.publish_meta.outputs.backend_version || 'n/a' }}
+          FRONTEND_VERSION: ${{ steps.publish_meta.outputs.frontend_version || 'n/a' }}
+          VERSION_MATRIX: ${{ steps.publish_meta.outputs.version_matrix || 'n/a' }}
+          SHA_MATRIX: ${{ steps.publish_meta.outputs.sha_matrix || 'n/a' }}
           BUILD_TAG: ${{ steps.publish_meta.outputs.build_tag || 'n/a' }}
           RELEASE_URL: ${{ steps.publish_meta.outputs.release_url || 'n/a' }}
         with:

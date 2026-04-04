@@ -75,6 +75,22 @@ export function normalizeGitUrl(url) {
   return url.replace(/\.git$/, "");
 }
 
+export function parseNamedAssignment(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const separatorIndex = value.indexOf("=");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  return {
+    name: value.slice(0, separatorIndex),
+    value: value.slice(separatorIndex + 1),
+  };
+}
+
 export async function pathExists(targetPath) {
   try {
     await access(targetPath);
@@ -104,6 +120,50 @@ export async function runCommand(command, args, options = {}) {
         stderr += chunk.toString();
       });
     }
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+
+      const error = new Error(
+        `${command} ${args.join(" ")} 退出码为 ${code}`,
+      );
+      error.code = code;
+      error.stdout = stdout;
+      error.stderr = stderr;
+      reject(error);
+    });
+  });
+}
+
+export async function runCommandStreaming(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd ?? repoRoot,
+      env: { ...process.env, ...options.env },
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+      if (options.stdoutTarget) {
+        options.stdoutTarget.write(chunk);
+      }
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+      if (options.stderrTarget) {
+        options.stderrTarget.write(chunk);
+      }
+    });
 
     child.on("error", reject);
     child.on("close", (code) => {
@@ -161,11 +221,16 @@ export async function resolveTagRef(cwd, version) {
   for (const candidate of candidates) {
     try {
       const sha = await captureGit(cwd, [
-        "rev-parse",
-        `refs/tags/${candidate}^{commit}`,
+        "rev-list",
+        "-n",
+        "1",
+        `refs/tags/${candidate}`,
       ]);
       return { ref: candidate, sha };
-    } catch {
+    } catch (error) {
+      if (error?.code !== 128) {
+        throw error;
+      }
       continue;
     }
   }

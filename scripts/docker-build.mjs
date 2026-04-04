@@ -1,4 +1,23 @@
-import { dockerBin, resolveUpstreamMetadata, runCommand } from "./lib/upstreams.mjs";
+import { buildImageLabels } from "./lib/publish.mjs";
+import {
+  dockerBin,
+  parseNamedAssignment,
+  resolveUpstreamMetadata,
+  runCommand,
+} from "./lib/upstreams.mjs";
+
+function normalizeTagValue(rawTag) {
+  const assignment = parseNamedAssignment(rawTag);
+  if (!assignment) {
+    return rawTag;
+  }
+
+  if (assignment.name === "image" || assignment.name === "tag") {
+    return assignment.value;
+  }
+
+  return null;
+}
 
 function parseArgs(argv) {
   const tags = [];
@@ -6,7 +25,11 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const current = argv[index];
     if (current === "--tag") {
-      const tag = argv[index + 1];
+      const tag = normalizeTagValue(argv[index + 1]);
+      if (tag == null) {
+        index += 1;
+        continue;
+      }
       if (!tag) {
         throw new Error("--tag 后面缺少镜像名");
       }
@@ -22,38 +45,13 @@ function parseArgs(argv) {
   return { tags };
 }
 
-function buildLabels(metadata) {
-  const buildTag = process.env.BUILD_TAG || metadata.comboTag;
-  const releaseUrl = process.env.BUILD_RELEASE_URL || metadata.repoSourceUrl;
-
-  return {
-    "org.opencontainers.image.title": "Sub-Store",
-    "org.opencontainers.image.description":
-      `Sub-Store bundled image ${buildTag} built from backend ${metadata.backend.currentValue} and frontend ${metadata.frontend.currentValue}`,
-    "org.opencontainers.image.version": buildTag,
-    "org.opencontainers.image.revision": metadata.repoRevision,
-    "org.opencontainers.image.source": metadata.repoSourceUrl,
-    "org.opencontainers.image.url": releaseUrl,
-    "org.opencontainers.image.created": new Date().toISOString(),
-    "io.github.sub-store.build.tag": buildTag,
-    "io.github.sub-store.build.release-url": releaseUrl,
-    "io.github.sub-store.backend.repo": metadata.backend.depName,
-    "io.github.sub-store.backend.version": metadata.backend.currentValue,
-    "io.github.sub-store.backend.tag": metadata.backend.resolvedTag,
-    "io.github.sub-store.backend.release-url": metadata.backend.releaseUrl,
-    "io.github.sub-store.backend.sha": metadata.backend.sha,
-    "io.github.sub-store.frontend.repo": metadata.frontend.depName,
-    "io.github.sub-store.frontend.version": metadata.frontend.currentValue,
-    "io.github.sub-store.frontend.tag": metadata.frontend.resolvedTag,
-    "io.github.sub-store.frontend.release-url": metadata.frontend.releaseUrl,
-    "io.github.sub-store.frontend.sha": metadata.frontend.sha,
-  };
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const metadata = await resolveUpstreamMetadata();
-  const labels = buildLabels(metadata);
+  const labels = buildImageLabels(metadata, {
+    buildTag: process.env.BUILD_TAG || metadata.comboTag,
+    releaseUrl: process.env.BUILD_RELEASE_URL || metadata.repoSourceUrl,
+  });
   const commandArgs = ["build", "--file", "Dockerfile"];
 
   for (const tag of args.tags) {

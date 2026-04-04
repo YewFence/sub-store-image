@@ -19,3 +19,14 @@ smoke image="sub-store:dev" port="38080":
 metadata:
     node scripts/upstream-metadata.mjs
 
+publish-metadata image="sub-store" build_number="local":
+    node scripts/publish-metadata.mjs --image {{image}} --build-number {{build_number}}
+
+publish image="sub-store" build_number="local":
+    node scripts/sync-upstreams.mjs
+    node scripts/docker-publish.mjs --image {{image}} --build-number {{build_number}}
+
+publish-push image="sub-store" build_number="local":
+    node scripts/sync-upstreams.mjs
+    node scripts/docker-publish.mjs --image {{image}} --build-number {{build_number}} --push
+

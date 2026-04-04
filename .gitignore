@@ -3,9 +3,7 @@ Sub-Store/
 Sub-Store-Front-End/
 
 # Local runtime data
-data/
 mmdb/
-certs/
 
 # Local environment files
 .env

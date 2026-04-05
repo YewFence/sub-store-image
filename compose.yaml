@@ -46,9 +46,7 @@ services:
       - public
     environment:
       FEED_SERVER_NAME: ${SUB_STORE_FEED_SERVER_NAME:-_}
-      FEED_PUBLIC_PATH: ${SUB_STORE_FEED_PUBLIC_PATH:-/yew-rhizome}
-      FEED_TOKEN: ${SUB_STORE_FEED_TOKEN:-}
-      FEED_UPSTREAM: http://sub-store:3000${SUB_STORE_FEED_UPSTREAM_PATH:-/backend/api/file/yew-rhizome}
+      FEED_ROUTES: ${SUB_STORE_FEED_ROUTES:-}
     volumes:
       - ./deploy/feed-proxy/docker-entrypoint.sh:/docker-entrypoint.d/40-sub-store-config.sh:ro
       - ./deploy/feed-proxy/default.conf.tmpl:/etc/sub-store/default.conf.tmpl:ro

@@ -2,7 +2,7 @@ services:
   sub-store:
     env_file:
       - .env
-    image: ${SUB_STORE_IMAGE:-ghcr.io/yewfence/sub-store:latest}
+    image: ${SUB_STORE_IMAGE:-ghcr.io/yewfence/sub-store-image:latest}
     container_name: sub-store
     restart: unless-stopped
     expose:

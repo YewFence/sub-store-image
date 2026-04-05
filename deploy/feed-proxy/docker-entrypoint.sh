@@ -151,6 +151,12 @@ EOF
 
     require_absolute_path "${route_public_path}" "FEED_ROUTES public path"
     require_clean_path "${route_public_path}" "FEED_ROUTES public path"
+    case "${route_public_path}" in
+        /healthz|/)
+            echo "FEED_ROUTES public path is reserved: ${route_public_path}" >&2
+            exit 1
+            ;;
+    esac
     require_clean_segment "${route_name}" "FEED_ROUTES resource name"
     if [ -n "${route_target}" ]; then
         require_clean_segment "${route_target}" "FEED_ROUTES target"

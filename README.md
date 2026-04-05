@@ -49,13 +49,15 @@ cp .env.example .env
 
 ```bash
 docker compose pull sub-store
-docker compose up -d --build
+# proxy 服务用官方 nginx 镜像，通过挂载脚本在启动时注入配置
+docker compose up -d
 ```
 
 如果想用 Cloudflare Tunnel 让订阅可以在公网访问，先确保 `.env` 里`公网订阅入口配置`那部分填好了，然后启用 `public` profile：
 
 ```bash
-docker compose --profile public up -d --build
+# proxy 服务用官方 nginx 镜像，通过挂载脚本在启动时注入配置
+docker compose --profile public up -d
 ```
 
 #### 本地开发

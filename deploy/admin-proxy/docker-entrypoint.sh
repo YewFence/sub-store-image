@@ -26,6 +26,5 @@ if [ "${enable_tls}" = "true" ]; then
     export ADMIN_TLS_SERVER_BLOCK
 fi
 
+# 显式指定变量列表，避免 nginx 原生变量（$host、$remote_addr 等）被误替换
 envsubst '${ADMIN_SERVER_NAME} ${ADMIN_UPSTREAM} ${ADMIN_TLS_SERVER_BLOCK}' < "${main_template}" > "${conf_path}"
-
-exec nginx -g 'daemon off;'

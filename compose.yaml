@@ -2,7 +2,7 @@ services:
   sub-store:
     env_file:
       - .env
-    image: ${SUB_STORE_IMAGE:-ghcr.io/yewfence/sub-store:latest}
+    image: ${SUB_STORE_IMAGE:-ghcr.io/yewfence/sub-store-image:latest}
     container_name: sub-store
     restart: unless-stopped
     expose:
@@ -12,9 +12,9 @@ services:
     networks:
       - sub-store-internal
 
+  # 该服务预设了简单的反向代理配置，也可以注释/删除以下服务并自行配置其他反向代理服务并将上游地址指向 sub-store:3000 来访问后端服务。
   admin-proxy:
-    build:
-      context: ./deploy/admin-proxy
+    image: nginx:1.28-alpine
     container_name: sub-store-admin-proxy
     restart: unless-stopped
     depends_on:
@@ -30,12 +30,14 @@ services:
       - "${TS_BIND_IP:-127.0.0.1}:${SUB_STORE_ADMIN_HTTPS_PORT:-38443}:443"
     volumes:
       - ./certs:/certs:ro
+      - ./deploy/admin-proxy/docker-entrypoint.sh:/docker-entrypoint.d/40-sub-store-config.sh:ro
+      - ./deploy/admin-proxy/default.conf.tmpl:/etc/sub-store/default.conf.tmpl:ro
+      - ./deploy/admin-proxy/tls-server.conf.tmpl:/etc/sub-store/tls-server.conf.tmpl:ro
     networks:
       - sub-store-internal
 
   feed-proxy:
-    build:
-      context: ./deploy/feed-proxy
+    image: nginx:1.28-alpine
     container_name: sub-store-feed-proxy
     restart: unless-stopped
     depends_on:
@@ -44,9 +46,10 @@ services:
       - public
     environment:
       FEED_SERVER_NAME: ${SUB_STORE_FEED_SERVER_NAME:-_}
-      FEED_PUBLIC_PATH: ${SUB_STORE_FEED_PUBLIC_PATH:-/yew-rhizome}
-      FEED_TOKEN: ${SUB_STORE_FEED_TOKEN:-}
-      FEED_UPSTREAM: http://sub-store:3000${SUB_STORE_FEED_UPSTREAM_PATH:-/backend/api/file/yew-rhizome}
+      FEED_ROUTES: ${SUB_STORE_FEED_ROUTES:-}
+    volumes:
+      - ./deploy/feed-proxy/docker-entrypoint.sh:/docker-entrypoint.d/40-sub-store-config.sh:ro
+      - ./deploy/feed-proxy/default.conf.tmpl:/etc/sub-store/default.conf.tmpl:ro
     networks:
       - sub-store-internal
 

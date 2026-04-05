@@ -26,6 +26,5 @@ export FEED_PUBLIC_PATH="${public_path}"
 export FEED_TOKEN="${token}"
 export FEED_UPSTREAM="${upstream}"
 
+# 显式指定变量列表，避免 nginx 原生变量（$host、$remote_addr 等）被误替换
 envsubst '${FEED_SERVER_NAME} ${FEED_PUBLIC_PATH} ${FEED_TOKEN} ${FEED_UPSTREAM}' < "${template_path}" > "${conf_path}"
-
-exec nginx -g 'daemon off;'

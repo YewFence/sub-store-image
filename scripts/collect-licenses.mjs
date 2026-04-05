@@ -1,6 +1,11 @@
 import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { resolve, join } from "path";
-import { pathExists, repoRoot, resolveCloneDir, readLockfile } from "./lib/upstreams.mjs";
+import {
+  pathExists,
+  repoRoot,
+  resolveCloneDir,
+  readLockfile,
+} from "./lib/upstreams.mjs";
 
 const licensesDir = resolve(repoRoot, "licenses");
 
@@ -66,14 +71,20 @@ async function collectLicense(source) {
 
   // 创建目标文件名，避免冲突
   const safeName = source.name.replace(/[^a-zA-Z0-9-]/g, "_");
-  const ext = foundLicense.endsWith(".md") ? ".md" : foundLicense.endsWith(".txt") ? ".txt" : "";
+  const ext = foundLicense.endsWith(".md")
+    ? ".md"
+    : foundLicense.endsWith(".txt")
+      ? ".txt"
+      : "";
   const targetName = `${safeName}-LICENSE${ext}`;
   const targetPath = join(licensesDir, targetName);
   const licenseText = await readFile(foundLicense, "utf8");
   const licenseId = detectLicenseId(licenseText);
 
   await copyFile(foundLicense, targetPath);
-  console.log(`[licenses] 已收集 ${source.depName} 的许可证 -> ${targetName} (${licenseId})`);
+  console.log(
+    `[licenses] 已收集 ${source.depName} 的许可证 -> ${targetName} (${licenseId})`,
+  );
 
   return {
     fileName: targetName,
@@ -100,19 +111,29 @@ async function generateNotice(sources, collected) {
     lines.push(`     Version: ${source.currentValue}`);
     lines.push(`     License: ${collectedLicense?.licenseId ?? "UNKNOWN"}`);
     if (collectedLicense?.fileName) {
-      lines.push(`     License File: /usr/share/licenses/sub-store/${collectedLicense.fileName}`);
+      lines.push(
+        `     License File: /usr/share/licenses/sub-store/${collectedLicense.fileName}`,
+      );
     }
     lines.push("");
   }
 
-  lines.push("--------------------------------------------------------------------------------");
+  lines.push(
+    "--------------------------------------------------------------------------------",
+  );
   lines.push("");
-  lines.push("The complete source code of these projects can be obtained from their");
+  lines.push(
+    "The complete source code of these projects can be obtained from their",
+  );
   lines.push("respective repositories listed above.");
   lines.push("");
-  lines.push("Refer to the included license files for the authoritative upstream license terms.");
+  lines.push(
+    "Refer to the included license files for the authoritative upstream license terms.",
+  );
   lines.push("");
-  lines.push("================================================================================");
+  lines.push(
+    "================================================================================",
+  );
 
   const noticePath = join(licensesDir, "NOTICE.txt");
   await writeFile(noticePath, lines.join("\n"), "utf-8");

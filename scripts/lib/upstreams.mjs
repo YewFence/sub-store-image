@@ -135,9 +135,7 @@ export async function runCommand(command, args, options = {}) {
         return;
       }
 
-      const error = new Error(
-        `${command} ${args.join(" ")} 退出码为 ${code}`,
-      );
+      const error = new Error(`${command} ${args.join(" ")} 退出码为 ${code}`);
       error.code = code;
       error.stdout = stdout;
       error.stderr = stderr;
@@ -179,9 +177,7 @@ export async function runCommandStreaming(command, args, options = {}) {
         return;
       }
 
-      const error = new Error(
-        `${command} ${args.join(" ")} 退出码为 ${code}`,
-      );
+      const error = new Error(`${command} ${args.join(" ")} 退出码为 ${code}`);
       error.code = code;
       error.stdout = stdout;
       error.stderr = stderr;
@@ -294,7 +290,9 @@ export async function resolveUpstreamMetadata() {
   }
 
   if (!namedSources.backend || !namedSources.frontend) {
-    throw new Error("sources.lock.json 必须包含 backend 和 frontend 两个 source");
+    throw new Error(
+      "sources.lock.json 必须包含 backend 和 frontend 两个 source",
+    );
   }
 
   const rootMetadata = await getRootRepoMetadata();

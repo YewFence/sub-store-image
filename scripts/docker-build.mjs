@@ -67,11 +67,17 @@ async function main() {
   }
 
   if (process.env.FRONTEND_API_BASE) {
-    commandArgs.push("--build-arg", `FRONTEND_API_BASE=${process.env.FRONTEND_API_BASE}`);
+    commandArgs.push(
+      "--build-arg",
+      `FRONTEND_API_BASE=${process.env.FRONTEND_API_BASE}`,
+    );
   }
 
   if (process.env.FRONTEND_PUBLIC_PATH) {
-    commandArgs.push("--build-arg", `FRONTEND_PUBLIC_PATH=${process.env.FRONTEND_PUBLIC_PATH}`);
+    commandArgs.push(
+      "--build-arg",
+      `FRONTEND_PUBLIC_PATH=${process.env.FRONTEND_PUBLIC_PATH}`,
+    );
   }
 
   commandArgs.push(".");

@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { dockerBin, parseNamedAssignment, runCommand } from "./lib/upstreams.mjs";
+import {
+  dockerBin,
+  parseNamedAssignment,
+  runCommand,
+} from "./lib/upstreams.mjs";
 
 const defaultArgs = {
   image: "sub-store:dev",
@@ -82,7 +86,11 @@ function parseIntegerOption(rawValue, optionName, { min = 1, max } = {}) {
   }
 
   const value = Number(text);
-  if (!Number.isSafeInteger(value) || value < min || (max != null && value > max)) {
+  if (
+    !Number.isSafeInteger(value) ||
+    value < min ||
+    (max != null && value > max)
+  ) {
     if (max != null) {
       throw new Error(`${optionName} 必须是 ${min}-${max} 的正整数`);
     }
@@ -121,7 +129,9 @@ async function waitFor(url, timeoutMs) {
 }
 
 async function assertFrontend(baseUrl) {
-  const response = await fetchWithTimeout(`${baseUrl}/`, { redirect: "manual" });
+  const response = await fetchWithTimeout(`${baseUrl}/`, {
+    redirect: "manual",
+  });
   if (response.status !== 200) {
     throw new Error(`首页状态码不对: ${response.status}`);
   }

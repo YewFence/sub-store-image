@@ -23,9 +23,13 @@ async function ensureClone(source) {
 
   if (!(await pathExists(cloneDir))) {
     log(`克隆 ${source.depName} -> ${source.cloneDir}`);
-    await runCommand(gitBin, ["clone", "--filter=blob:none", repoUrl, source.cloneDir], {
-      cwd: repoRoot,
-    });
+    await runCommand(
+      gitBin,
+      ["clone", "--filter=blob:none", repoUrl, source.cloneDir],
+      {
+        cwd: repoRoot,
+      },
+    );
     return cloneDir;
   }
 
@@ -46,9 +50,13 @@ async function ensureClone(source) {
 async function syncSource(source) {
   const cloneDir = await ensureClone(source);
   log(`获取 ${source.depName} 的最新 tags`);
-  await runCommand(gitBin, ["fetch", "--force", "--tags", "--prune", "origin"], {
-    cwd: cloneDir,
-  });
+  await runCommand(
+    gitBin,
+    ["fetch", "--force", "--tags", "--prune", "origin"],
+    {
+      cwd: cloneDir,
+    },
+  );
 
   const tag = await resolveTagRef(cloneDir, source.currentValue);
   log(`切到 ${source.depName}@${tag.ref} (${tag.sha.slice(0, 7)})`);

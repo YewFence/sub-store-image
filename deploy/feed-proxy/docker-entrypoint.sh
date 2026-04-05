@@ -114,6 +114,7 @@ seen_public_paths='|'
 route_count=0
 old_ifs="${IFS}"
 IFS=';'
+set -f
 for raw_entry in ${routes}; do
     entry="$(trim "${raw_entry}")"
     if [ -z "${entry}" ]; then
@@ -176,6 +177,7 @@ EOF
         "${route_target}"
     route_count=$((route_count + 1))
 done
+set +f
 IFS="${old_ifs}"
 if [ "${route_count}" -eq 0 ]; then
     echo "FEED_ROUTES is set but contains no valid entries" >&2

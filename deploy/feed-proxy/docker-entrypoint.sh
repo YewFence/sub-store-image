@@ -22,18 +22,20 @@ require_absolute_path() {
 }
 
 require_clean_path() {
+    # Allowlist: alphanumeric, '/', '.', '-', '_', '~', '%'
     case "$1" in
-        *' '*|*'	'*|*'?'*|*'#'*)
-            echo "$2 contains unsupported characters: $1" >&2
+        *[!A-Za-z0-9/._~%-]*)
+            echo "$2 contains unsupported characters (only A-Za-z0-9/._~%- are allowed): $1" >&2
             exit 1
             ;;
     esac
 }
 
 require_clean_segment() {
+    # Allowlist: alphanumeric, '.', '-', '_', '~', '%' (no slash)
     case "$1" in
-        *' '*|*'	'*|*'/'*|*'?'*|*'#'*)
-            echo "$2 contains unsupported characters: $1" >&2
+        *[!A-Za-z0-9._~%-]*)
+            echo "$2 contains unsupported characters (only A-Za-z0-9._~%- are allowed): $1" >&2
             echo "$2 如需包含特殊字符，请先做 URL 编码" >&2
             exit 1
             ;;

@@ -32,7 +32,11 @@ export function formatReleaseDate(date = new Date()) {
   return `${date.getUTCFullYear()}.${pad(date.getUTCMonth() + 1)}.${pad(date.getUTCDate())}`;
 }
 
-export function resolveBuildTag({ buildTag, buildNumber, now = new Date() } = {}) {
+export function resolveBuildTag({
+  buildTag,
+  buildNumber,
+  now = new Date(),
+} = {}) {
   const releaseDate = formatReleaseDate(now);
 
   if (typeof buildTag === "string" && buildTag.trim() !== "") {
@@ -53,7 +57,12 @@ export function resolveBuildTag({ buildTag, buildNumber, now = new Date() } = {}
   };
 }
 
-export function resolveReleaseUrl({ releaseUrl, releaseBaseUrl, repoSourceUrl, buildTag }) {
+export function resolveReleaseUrl({
+  releaseUrl,
+  releaseBaseUrl,
+  repoSourceUrl,
+  buildTag,
+}) {
   if (typeof releaseUrl === "string" && releaseUrl.trim() !== "") {
     return releaseUrl.trim();
   }
@@ -62,7 +71,11 @@ export function resolveReleaseUrl({ releaseUrl, releaseBaseUrl, repoSourceUrl, b
 
   if (typeof releaseBaseUrl === "string" && releaseBaseUrl.trim() !== "") {
     baseUrl = releaseBaseUrl.trim();
-  } else if (typeof repoSourceUrl === "string" && repoSourceUrl !== "unknown" && repoSourceUrl) {
+  } else if (
+    typeof repoSourceUrl === "string" &&
+    repoSourceUrl !== "unknown" &&
+    repoSourceUrl
+  ) {
     baseUrl = `${trimTrailingSlash(repoSourceUrl)}/releases/tag`;
   }
 
@@ -88,14 +101,13 @@ export function buildImageLabels(
 
   return {
     "org.opencontainers.image.title": "Sub-Store",
-    "org.opencontainers.image.description":
-      `Sub-Store bundled image ${buildTag} built from backend ${metadata.backend.currentValue} and frontend ${metadata.frontend.currentValue}`,
+    "org.opencontainers.image.description": `Sub-Store bundled image ${buildTag} built from backend ${metadata.backend.currentValue} and frontend ${metadata.frontend.currentValue}`,
     "org.opencontainers.image.version": buildTag,
     "org.opencontainers.image.revision": metadata.repoRevision,
     "org.opencontainers.image.source": metadata.repoSourceUrl,
     "org.opencontainers.image.url": resolvedReleaseUrl,
     "org.opencontainers.image.created": createdAt,
-    "org.opencontainers.image.licenses": "AGPL-3.0, MIT",
+    "org.opencontainers.image.licenses": "AGPL-3.0, GPL-3.0, MIT",
     "org.opencontainers.image.ref.name": buildTag,
     "io.github.sub-store.build.tag": buildTag,
     "io.github.sub-store.build.release-url": resolvedReleaseUrl,
@@ -112,13 +124,17 @@ export function buildImageLabels(
     "io.github.sub-store.frontend.tag": metadata.frontend.resolvedTag,
     "io.github.sub-store.frontend.release-url": metadata.frontend.releaseUrl,
     "io.github.sub-store.frontend.sha": metadata.frontend.sha,
-    "io.github.sub-store.frontend.license": "AGPL-3.0",
+    "io.github.sub-store.frontend.license": "GPL-3.0",
     "io.github.sub-store.frontend.source-url": `https://github.com/${metadata.frontend.depName}/tree/${metadata.frontend.sha}`,
     "io.github.sub-store.frontend.source-archive": `https://github.com/${metadata.frontend.depName}/archive/${metadata.frontend.sha}.tar.gz`,
   };
 }
 
-export function buildImageTagMap(imageName, metadata, { buildTag, includeLatest = true } = {}) {
+export function buildImageTagMap(
+  imageName,
+  metadata,
+  { buildTag, includeLatest = true } = {},
+) {
   const tagMap = {
     latest: includeLatest ? "latest" : "",
     build: buildTag,

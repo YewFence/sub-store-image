@@ -9,8 +9,8 @@
 1. Renovate 发现上游 release/tag 更新
 2. Renovate 更新 [`sources.lock.json`](../sources.lock.json)
 3. `renovate/**` 分支触发 [`Upstream Smoke`](../.github/workflows/upstream-smoke.yml)
-4. 冒烟通过后，Renovate 把更新直接落进 `main`(默认不会开 PR)
-5. `main` 触发 [`Publish Image`](../.github/workflows/publish.yml)
+4. 冒烟通过后，延迟 12 小时，然后 Renovate 把更新直接写入 `main`(默认不会开 PR)
+5. `main` 提交触发 [`Publish Image`](../.github/workflows/publish.yml)
 6. 工作流把镜像推到 GHCR
 7. 工作流创建或更新这个仓库自己的 GitHub Release
 
@@ -30,10 +30,8 @@
 
 官方文档：
 
-- Renovate 安装与 onboarding
-  https://docs.renovatebot.com/getting-started/installing-onboarding/
-- Renovate automerge
-  https://docs.renovatebot.com/key-concepts/automerge/
+- [Renovate 安装与 onboarding](https://docs.renovatebot.com/getting-started/installing-onboarding/)
+- [Renovate automerge](https://docs.renovatebot.com/key-concepts/automerge/)
 
 ## 2. 打开 GitHub Actions
 
@@ -44,8 +42,7 @@
 
 官方文档：
 
-- GitHub Actions 仓库设置
-  https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
+- [GitHub Actions 仓库设置](https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
 
 ## 3. 让 `GITHUB_TOKEN` 有足够权限
 
@@ -57,8 +54,7 @@
 
 官方文档：
 
-- `GITHUB_TOKEN` 自动认证
-  https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
+- [`GITHUB_TOKEN` 自动认证](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication)
 
 ## 4. GHCR 发布
 
@@ -78,20 +74,9 @@
 这意味着：
 
 - Renovate 先建 `renovate/**` 分支
-- 冒烟测试通过后，Renovate 会直接把 commit 落到 `main`
+- 冒烟测试通过后，Renovate 会直接把 commit 写入 `main`，原分支不会保留，也没有 PR
 - 如果测试失败，Renovate 才会保留分支/PR 给你看
-
-所以当前默认配置下：
-
-- 你必须让 Renovate 的 branch automerge 能把更新写进 `main`
-- 如果你的 `main` 分支保护禁止这种直落方式，这套默认配置就跑不通
-
-Renovate 官方文档明确指出：若 branch protection 阻止 direct automerge，应改用 PR 模式，不要使用 `automergeType=branch`。
-
-官方文档：
-
-- Renovate automerge
-  https://docs.renovatebot.com/key-concepts/automerge/
+- 如果打开了 `main` 分支保护，因为 Renovate 无法写入 `main` ,这个工作流会失败
 
 ### 从PR更新
 
@@ -99,7 +84,7 @@ Renovate 官方文档明确指出：若 branch protection 阻止 direct automerg
 
 1. 把 [`renovate.json`](../renovate.json) 里的 `automergeType` 改成 `pr`
 2. 在 `main` 上启用 required status checks
-3. 让平台自动 merge PR，而不是 branch automerge
+3. 让 Github 自动 merge PR，而不是 branch automerge
 
 ## 6. 需要额外 secrets 吗
 

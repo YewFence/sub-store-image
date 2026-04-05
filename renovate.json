@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^sources\\.lock\\.json$"],
+      "matchStrings": [
+        "\"depName\"\\s*:\\s*\"(?<depName>[^\"]+)\"[\\s\\S]*?\"datasource\"\\s*:\\s*\"(?<datasource>[^\"]+)\"[\\s\\S]*?\"versioning\"\\s*:\\s*\"(?<versioning>[^\"]+)\"[\\s\\S]*?\"currentValue\"\\s*:\\s*\"(?<currentValue>[^\"]+)\"[\\s\\S]*?\"cloneDir\"\\s*:\\s*\"[^\"]+\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["sources.lock.json"],
+      "groupName": "sub-store-upstreams",
+      "groupSlug": "sub-store-upstreams",
+      "automerge": true,
+      "automergeType": "branch",
+      "minimumReleaseAge": "12 hours"
+    }
+  ]
+}

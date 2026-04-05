@@ -1,0 +1,293 @@
+name: Publish Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".dockerignore"
+      - ".github/workflows/publish.yml"
+      - "Dockerfile"
+      - "justfile"
+      - "renovate.json"
+      - "scripts/**"
+      - "sources.lock.json"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  issues: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync upstream sources
+        id: sync
+        continue-on-error: true
+        run: node scripts/sync-upstreams.mjs
+
+      - name: Collect upstream licenses
+        id: licenses
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/collect-licenses.mjs
+
+      - name: Resolve publish metadata
+        id: publish_meta
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          node scripts/publish-metadata.mjs \
+            --image "ghcr.io/${GITHUB_REPOSITORY,,}" \
+            --build-number "${GITHUB_RUN_NUMBER}" \
+            --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag" \
+            --format github-output >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        id: login
+        if: steps.publish_meta.outcome == 'success' && steps.licenses.outcome == 'success'
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build_push
+        if: steps.login.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          node scripts/docker-publish.mjs \
+            --image "${{ steps.publish_meta.outputs.image_name }}" \
+            --build-tag "${{ steps.publish_meta.outputs.build_tag }}" \
+            --release-url "${{ steps.publish_meta.outputs.release_url }}" \
+            --push \
+            --format github-output >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        id: release
+        if: steps.build_push.outcome == 'success'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          BUILD_TAG: ${{ steps.publish_meta.outputs.build_tag }}
+          IMAGE_NAME: ${{ steps.publish_meta.outputs.image_name }}
+          IMAGE_DIGEST: ${{ steps.build_push.outputs.digest }}
+          RELEASE_URL: ${{ steps.publish_meta.outputs.release_url }}
+          COMBO_TAG: ${{ steps.publish_meta.outputs.combo_tag }}
+          VERSION_MATRIX: ${{ steps.publish_meta.outputs.version_matrix }}
+          SHA_MATRIX: ${{ steps.publish_meta.outputs.sha_matrix }}
+          BACKEND_REPO: ${{ steps.publish_meta.outputs.backend_repo }}
+          BACKEND_VERSION: ${{ steps.publish_meta.outputs.backend_version }}
+          BACKEND_TAG: ${{ steps.publish_meta.outputs.backend_tag }}
+          BACKEND_SHA: ${{ steps.publish_meta.outputs.backend_sha }}
+          BACKEND_RELEASE_URL: ${{ steps.publish_meta.outputs.backend_release_url }}
+          FRONTEND_REPO: ${{ steps.publish_meta.outputs.frontend_repo }}
+          FRONTEND_VERSION: ${{ steps.publish_meta.outputs.frontend_version }}
+          FRONTEND_TAG: ${{ steps.publish_meta.outputs.frontend_tag }}
+          FRONTEND_SHA: ${{ steps.publish_meta.outputs.frontend_sha }}
+          FRONTEND_RELEASE_URL: ${{ steps.publish_meta.outputs.frontend_release_url }}
+        with:
+          script: |
+            const tag = process.env.BUILD_TAG;
+            const body = [
+              `Sub-Store image release \`${tag}\``,
+              '',
+              '## Image',
+              '',
+              `- Package: \`${process.env.IMAGE_NAME}\``,
+              `- Digest: \`${process.env.IMAGE_DIGEST}\``,
+              `- Pull: \`docker pull ${process.env.IMAGE_NAME}:${tag}\``,
+              `- Combo tag: \`${process.env.COMBO_TAG}\``,
+              `- Version matrix: \`${process.env.VERSION_MATRIX}\``,
+              `- SHA matrix: \`${process.env.SHA_MATRIX}\``,
+              '',
+              '## Upstreams',
+              '',
+              `- Backend: [${process.env.BACKEND_REPO} ${process.env.BACKEND_TAG}](${process.env.BACKEND_RELEASE_URL})`,
+              `- Backend SHA: \`${process.env.BACKEND_SHA}\``,
+              `- Frontend: [${process.env.FRONTEND_REPO} ${process.env.FRONTEND_TAG}](${process.env.FRONTEND_RELEASE_URL})`,
+              `- Frontend SHA: \`${process.env.FRONTEND_SHA}\``,
+              '',
+              '## Build Repo',
+              '',
+              `- Commit: \`${context.sha}\``,
+              `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `- Release URL: ${process.env.RELEASE_URL}`,
+            ].join('\n');
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: existing.data.id,
+                body,
+                name: tag,
+                draft: false,
+                prerelease: false,
+              });
+
+              core.info(`Updated release ${tag}`);
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                target_commitish: context.sha,
+                name: tag,
+                body,
+                draft: false,
+                prerelease: false,
+                generate_release_notes: false,
+              });
+
+              core.info(`Created release ${tag}`);
+            }
+
+      - name: Classify result
+        id: classify
+        if: always()
+        shell: bash
+        run: |
+          failure_type="success"
+          failed_step="none"
+
+          if [[ "${{ steps.sync.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="sync"
+          elif [[ "${{ steps.licenses.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="licenses"
+          elif [[ "${{ steps.publish_meta.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="publish_meta"
+          elif [[ "${{ steps.login.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="login"
+          elif [[ "${{ steps.build_push.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="build_push"
+          elif [[ "${{ steps.release.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="release"
+          fi
+
+          echo "failure_type=${failure_type}" >> "$GITHUB_OUTPUT"
+          echo "failed_step=${failed_step}" >> "$GITHUB_OUTPUT"
+
+      - name: Write workflow summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Publish Image"
+            echo ""
+            echo "- Failure type: \`${{ steps.classify.outputs.failure_type }}\`"
+            echo "- Failed step: \`${{ steps.classify.outputs.failed_step }}\`"
+            echo "- Build tag: \`${{ steps.publish_meta.outputs.build_tag || 'n/a' }}\`"
+            echo "- Release URL: \`${{ steps.publish_meta.outputs.release_url || 'n/a' }}\`"
+            echo "- Combo tag: \`${{ steps.publish_meta.outputs.combo_tag || 'n/a' }}\`"
+            echo "- Backend: \`${{ steps.publish_meta.outputs.backend_version || 'n/a' }}\`"
+            echo "- Frontend: \`${{ steps.publish_meta.outputs.frontend_version || 'n/a' }}\`"
+            echo "- Version matrix: \`${{ steps.publish_meta.outputs.version_matrix || 'n/a' }}\`"
+            echo "- SHA matrix: \`${{ steps.publish_meta.outputs.sha_matrix || 'n/a' }}\`"
+            echo "- Image: \`${{ steps.publish_meta.outputs.image_name || 'n/a' }}\`"
+            echo "- Digest: \`${{ steps.build_push.outputs.digest || 'n/a' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update automation issue
+        if: always() && steps.classify.outputs.failure_type == 'automation-error'
+        uses: actions/github-script@v7
+        env:
+          FAILED_STEP: ${{ steps.classify.outputs.failed_step }}
+          BACKEND_VERSION: ${{ steps.publish_meta.outputs.backend_version || 'n/a' }}
+          FRONTEND_VERSION: ${{ steps.publish_meta.outputs.frontend_version || 'n/a' }}
+          VERSION_MATRIX: ${{ steps.publish_meta.outputs.version_matrix || 'n/a' }}
+          SHA_MATRIX: ${{ steps.publish_meta.outputs.sha_matrix || 'n/a' }}
+          BUILD_TAG: ${{ steps.publish_meta.outputs.build_tag || 'n/a' }}
+          RELEASE_URL: ${{ steps.publish_meta.outputs.release_url || 'n/a' }}
+        with:
+          script: |
+            const title = '[automation] Sub-Store image publish failure';
+            const labels = ['automation', 'ci'];
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '## Publish failure',
+              '',
+              `- Workflow: \`${context.workflow}\``,
+              `- Ref: \`${context.ref}\``,
+              `- Failed step: \`${process.env.FAILED_STEP}\``,
+              `- Backend version: \`${process.env.BACKEND_VERSION}\``,
+              `- Frontend version: \`${process.env.FRONTEND_VERSION}\``,
+              `- Build tag: \`${process.env.BUILD_TAG}\``,
+              `- Version matrix: \`${process.env.VERSION_MATRIX}\``,
+              `- SHA matrix: \`${process.env.SHA_MATRIX}\``,
+              `- Release URL: ${process.env.RELEASE_URL}`,
+              `- Run: ${runUrl}`,
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: labels.join(','),
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info(`Updated issue #${existing.number}`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels,
+            });
+
+            core.info(`Created issue #${created.data.number}`);
+
+      - name: Fail workflow if publish did not pass
+        if: always() && steps.classify.outputs.failure_type != 'success'
+        shell: bash
+        run: |
+          echo "::error::Publish workflow failed with ${{ steps.classify.outputs.failure_type }} at ${{ steps.classify.outputs.failed_step }}"
+          exit 1

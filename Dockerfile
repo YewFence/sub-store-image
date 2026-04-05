@@ -57,6 +57,9 @@ COPY --from=backend-builder /build/backend/sub-store.min.js ./sub-store.min.js
 COPY --from=backend-builder /build/backend/dist ./dist
 COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist
 
+# 添加上游许可证文件
+COPY licenses/ /usr/share/licenses/sub-store/
+
 RUN mkdir -p /app/data
 
 VOLUME ["/app/data"]

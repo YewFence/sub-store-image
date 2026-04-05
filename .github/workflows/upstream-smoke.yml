@@ -1,0 +1,167 @@
+name: Upstream Smoke
+
+on:
+  push:
+    branches:
+      - "renovate/**"
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync upstream sources
+        id: sync
+        continue-on-error: true
+        run: node scripts/sync-upstreams.mjs
+
+      - name: Collect upstream licenses
+        id: licenses
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/collect-licenses.mjs
+
+      - name: Resolve upstream metadata
+        id: metadata
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: node scripts/upstream-metadata.mjs --format github-output >> "$GITHUB_OUTPUT"
+
+      - name: Build smoke image
+        id: build
+        if: steps.metadata.outcome == 'success' && steps.licenses.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/docker-build.mjs --tag sub-store-ci:${{ github.run_id }}
+
+      - name: Run smoke checks
+        id: smoke
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/run-smoke.mjs --image sub-store-ci:${{ github.run_id }} --port 38080
+
+      - name: Classify result
+        id: classify
+        if: always()
+        shell: bash
+        run: |
+          failure_type="success"
+          failed_step="none"
+
+          if [[ "${{ steps.sync.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="sync"
+          elif [[ "${{ steps.licenses.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="licenses"
+          elif [[ "${{ steps.metadata.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="metadata"
+          elif [[ "${{ steps.build.outcome }}" == "failure" ]]; then
+            failure_type="build-or-smoke-failure"
+            failed_step="build"
+          elif [[ "${{ steps.smoke.outcome }}" == "failure" ]]; then
+            failure_type="build-or-smoke-failure"
+            failed_step="smoke"
+          fi
+
+          echo "failure_type=${failure_type}" >> "$GITHUB_OUTPUT"
+          echo "failed_step=${failed_step}" >> "$GITHUB_OUTPUT"
+
+      - name: Write workflow summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Upstream Smoke"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Failure type: \`${{ steps.classify.outputs.failure_type }}\`"
+            echo "- Failed step: \`${{ steps.classify.outputs.failed_step }}\`"
+            echo "- Backend: \`${{ steps.metadata.outputs.backend_version || 'n/a' }}\`"
+            echo "- Frontend: \`${{ steps.metadata.outputs.frontend_version || 'n/a' }}\`"
+            echo "- Version matrix: \`${{ steps.metadata.outputs.version_matrix || 'n/a' }}\`"
+            echo "- SHA matrix: \`${{ steps.metadata.outputs.sha_matrix || 'n/a' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update automation issue
+        if: always() && steps.classify.outputs.failure_type == 'automation-error'
+        uses: actions/github-script@v7
+        env:
+          FAILED_STEP: ${{ steps.classify.outputs.failed_step }}
+          BACKEND_VERSION: ${{ steps.metadata.outputs.backend_version || 'n/a' }}
+          FRONTEND_VERSION: ${{ steps.metadata.outputs.frontend_version || 'n/a' }}
+          VERSION_MATRIX: ${{ steps.metadata.outputs.version_matrix || 'n/a' }}
+          SHA_MATRIX: ${{ steps.metadata.outputs.sha_matrix || 'n/a' }}
+        with:
+          script: |
+            const title = '[automation] Sub-Store image pipeline failure';
+            const labels = ['automation', 'ci'];
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '## Automation failure',
+              '',
+              `- Workflow: \`${context.workflow}\``,
+              `- Ref: \`${context.ref}\``,
+              `- Failed step: \`${process.env.FAILED_STEP}\``,
+              `- Backend version: \`${process.env.BACKEND_VERSION}\``,
+              `- Frontend version: \`${process.env.FRONTEND_VERSION}\``,
+              `- Version matrix: \`${process.env.VERSION_MATRIX}\``,
+              `- SHA matrix: \`${process.env.SHA_MATRIX}\``,
+              `- Run: ${runUrl}`,
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: labels.join(','),
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info(`Updated issue #${existing.number}`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels,
+            });
+
+            core.info(`Created issue #${created.data.number}`);
+
+      - name: Fail workflow if validation did not pass
+        if: always() && steps.classify.outputs.failure_type != 'success'
+        shell: bash
+        run: |
+          echo "::error::Upstream smoke failed with ${{ steps.classify.outputs.failure_type }} at ${{ steps.classify.outputs.failed_step }}"
+          exit 1

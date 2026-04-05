@@ -16,7 +16,7 @@
 
 ## TL;DR
 
-至少完成 1~3 步后再启用自动化。建议保留分支保护；如果 `automergeType=branch` 和你的保护策略冲突，就改用 PR automerge，或者给 Renovate 配受控的绕过权限。后续步骤主要是原理说明。
+完成前两步即可，后续步骤主要是原理说明。
 
 ## 1. 安装 Renovate App
 
@@ -49,7 +49,7 @@
 
 ## 3. 让 `GITHUB_TOKEN` 有足够权限
 
-这套 workflow 已经在文件里显式声明了权限：
+这套 workflow 已经在文件里显式声明了权限，无需多余步骤，此处给出各个权限的说明：
 
 - `contents: write` ：用来创建 GitHub Release
 - `packages: write` ：用来发布 GHCR 镜像

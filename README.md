@@ -1,12 +1,14 @@
 # Sub-Store 第三方镜像与部署模板
 
-这不是上游 Sub-Store 的官方源码仓库。
+> 这不是上游 [Sub-Store](https://github.com/sub-store-org/sub-store) 的官方源码仓库。
 
-这个仓库主要做两件事：维护我自己的 Sub-Store 镜像，以及提供一个相对安全的生产环境部署方案。具体来说，它会负责锁定 Sub-Store 后端和前端的具体版本，自动检测上游有没有新版本，拉取源码、构建 Docker 镜像并做基础测试，测试没问题后发布到 GHCR，最后给出一套更适合生产环境的 docker compose 部署配置。
+这个仓库主要做两件事：维护我自己的 Sub-Store 镜像，以及提供一个相对安全的生产环境部署方案。
 
-注意：这里不存上游源码，只用 [`sources.lock.json`](./sources.lock.json) 记录版本信息。
+具体来说，它会负责锁定 Sub-Store 后端和前端的具体版本，自动检测上游有没有新版本，拉取源码、构建 Docker 镜像并做基础测试，测试没问题后发布到 GHCR，并且给出一套开箱即用的，更安全的，适合生产环境的 `sub-store` docker compose 部署配置模板。
 
-> **注意**：自动化流程还在测试阶段，可能会出问题，暂时不建议用预构建镜像
+注意：这里不存储上游源码，只用 [`sources.lock.json`](./sources.lock.json) 记录版本信息。
+
+> **注意**：自动化发布流程还在测试阶段，可能会出问题。
 
 ## 快速开始
 
@@ -16,6 +18,8 @@
 git clone https://github.com/YewFence/sub-store-image.git
 cd sub-store-image
 ```
+
+> 仓库中包含 Nginx 配置自动生成脚本，并且保留了绑定挂载卷的文件夹以避免权限问题，所以需要克隆整个仓库以部署服务，仅有一个 `compose.yaml` 文件无法直接部署服务。
 
 ### 2. 准备环境变量
 

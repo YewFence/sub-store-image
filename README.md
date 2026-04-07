@@ -53,12 +53,14 @@ docker compose pull sub-store
 docker compose up -d
 ```
 
-如果想用 Cloudflare Tunnel 让订阅可以在公网访问，先确保 `.env` 里`公网订阅入口配置`那部分填好了，然后启用 `public` profile：
+如果想用 Cloudflare Tunnel 让订阅可以在公网访问，先确保 `.env` 里`公网订阅入口配置`那部分填写完成，然后启用 `public` profile：
 
 ```bash
 # proxy 服务用官方 nginx 镜像，通过挂载脚本在启动时注入配置
 docker compose --profile public up -d
 ```
+
+如果不清除如何配置的，可以查看[`docs/public-feed-setup.md`](./docs/public-feed-setup.md)。
 
 #### 本地开发
 

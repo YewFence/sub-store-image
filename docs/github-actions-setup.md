@@ -9,7 +9,7 @@
 1. Renovate 发现上游 release/tag 更新
 2. Renovate 更新 [`sources.lock.json`](../sources.lock.json)
 3. `renovate/**` 分支触发 [`Upstream Smoke`](../.github/workflows/upstream-smoke.yml)
-4. 冒烟通过后，延迟 12 小时，然后 Renovate 把更新直接写入 `main`(默认不会开 PR)
+4. 冒烟通过后 Renovate 把更新直接写入 `main`(默认不会开 PR)
 5. `main` 提交触发 [`Publish Image`](../.github/workflows/publish.yml)
 6. 工作流把镜像推到 GHCR
 7. 工作流创建或更新这个仓库自己的 GitHub Release

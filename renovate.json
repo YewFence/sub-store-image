@@ -18,8 +18,7 @@
       "groupName": "sub-store-upstreams",
       "groupSlug": "sub-store-upstreams",
       "automerge": true,
-      "automergeType": "branch",
-      "minimumReleaseAge": "12 hours"
+      "automergeType": "branch"
     }
   ]
 }

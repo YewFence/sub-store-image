@@ -7,6 +7,12 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/backend/api/utils/env').then(async (resp) => { if (!resp.ok) process.exit(1); const data = await resp.json(); if (data?.status !== 'success') process.exit(1); process.exit(0); }).catch(() => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     volumes:
       - ./data:/app/data
     networks:
@@ -18,13 +24,20 @@ services:
     container_name: sub-store-admin-proxy
     restart: unless-stopped
     depends_on:
-      - sub-store
+      sub-store:
+        condition: service_healthy
     environment:
       ADMIN_SERVER_NAME: ${SUB_STORE_ADMIN_SERVER_NAME:-_}
       ADMIN_ENABLE_TLS: ${SUB_STORE_ADMIN_ENABLE_TLS:-false}
       ADMIN_TLS_CERT_PATH: ${SUB_STORE_ADMIN_TLS_CERT_PATH:-/certs/admin.crt}
       ADMIN_TLS_KEY_PATH: ${SUB_STORE_ADMIN_TLS_KEY_PATH:-/certs/admin.key}
       ADMIN_UPSTREAM: http://sub-store:3000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/backend/api/utils/env"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     ports:
       - "${TS_BIND_IP:-127.0.0.1}:${SUB_STORE_ADMIN_HTTP_PORT:-38080}:80"
       - "${TS_BIND_IP:-127.0.0.1}:${SUB_STORE_ADMIN_HTTPS_PORT:-38443}:443"
@@ -41,12 +54,19 @@ services:
     container_name: sub-store-feed-proxy
     restart: unless-stopped
     depends_on:
-      - sub-store
+      sub-store:
+        condition: service_healthy
     profiles:
       - public
     environment:
       FEED_SERVER_NAME: ${SUB_STORE_FEED_SERVER_NAME:-_}
       FEED_ROUTES: ${SUB_STORE_FEED_ROUTES:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./deploy/feed-proxy/docker-entrypoint.sh:/docker-entrypoint.d/40-sub-store-config.sh:ro
       - ./deploy/feed-proxy/default.conf.tmpl:/etc/sub-store/default.conf.tmpl:ro
@@ -58,15 +78,24 @@ services:
     container_name: sub-store-cloudflared
     restart: unless-stopped
     depends_on:
-      - feed-proxy
+      feed-proxy:
+        condition: service_healthy
     profiles:
       - public
     command:
       - tunnel
       - --no-autoupdate
+      - --metrics
+      - 127.0.0.1:20241
       - run
       - --token
       - ${CLOUDFLARED_TUNNEL_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:20241", "ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - sub-store-internal
 

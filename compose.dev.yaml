@@ -11,6 +11,12 @@ services:
         FRONTEND_PUBLIC_PATH: ${FRONTEND_PUBLIC_PATH:-/}
     container_name: sub-store
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/backend/api/utils/env').then(async (resp) => { if (!resp.ok) process.exit(1); const data = await resp.json(); if (data?.status !== 'success') process.exit(1); process.exit(0); }).catch(() => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     ports:
       - "${SUB_STORE_PORT:-3000}:3000"
     volumes:

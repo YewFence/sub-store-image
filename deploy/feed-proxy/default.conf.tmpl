@@ -3,6 +3,10 @@ server {
     server_name ${FEED_SERVER_NAME};
     client_max_body_size 1m;
     access_log off;
+    # feed routes use $arg_token in proxy_pass, so nginx needs an explicit DNS resolver
+    # to resolve Docker service names like sub-store at request time.
+    resolver 127.0.0.11 ipv6=off valid=30s;
+    resolver_timeout 5s;
 
     location = /healthz {
         return 200 'ok';

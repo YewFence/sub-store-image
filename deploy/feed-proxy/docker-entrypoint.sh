@@ -89,8 +89,10 @@ append_share_location() {
             deny all;
         }
 
+        access_log /dev/stdout feed_missing_token if=\$feed_missing_token_log;
+
         if (\$arg_token = "") {
-            return 401;
+            return 404;
         }
 
         add_header Cache-Control "no-store" always;

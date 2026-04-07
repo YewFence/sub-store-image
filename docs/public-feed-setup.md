@@ -158,7 +158,9 @@ Cloudflare 只负责：
 
 ### 4. 访问时没带 `token`
 
-`feed-proxy` 会直接返回 `401`。
+`feed-proxy` 会直接返回 `404`。
+
+同时它会在 `feed-proxy` 容器日志里额外打一条 `feed_missing_token` 访问日志，方便排查是谁在探测或谁把链接抄漏了，但日志不会包含 token 本身。
 
 所以最终给客户端的地址一定要长这样：
 

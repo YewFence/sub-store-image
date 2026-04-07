@@ -1,1 +1,2 @@
-deploy/**/*.tmpl linguist-language=Nginx
+*.sh text eol=lf
+deploy/**/*.tmpl text eol=lf linguist-language=Nginx

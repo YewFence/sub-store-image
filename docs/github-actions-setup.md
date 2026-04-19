@@ -144,6 +144,6 @@
 - 在这个状态下，Renovate 默认扫描频率通常是每天一次，不是 `activated` 常见的每 4 小时一次
 - 官方也没有提供一个稳定可用的 API 端点来直接触发 cloud 立即重跑
 
-因此这里选择用 GitHub Actions 定时去勾 dashboard 里的 `manual job` checkbox，等价于把原本的手工 rerun 自动化。
+因此这里选择用 GitHub Actions 定时勾选 dashboard 里的 manual job checkbox，等价于把原本的手工 rerun 自动化。
 
 如果以后 dashboard 里新增其他 checkbox，这个 workflow 不会碰它们；它只匹配 `manual job` 这一行固定文案。

@@ -199,12 +199,14 @@ just publish-push ghcr.io/your-name/sub-store
 
 ### 自动化流程
 
-有两条工作流：
+有三条工作流：
 
 - [`Upstream Smoke`](./.github/workflows/upstream-smoke.yml)
   监听 `renovate/**` 分支。Renovate 更新锁文件后，这条工作流会拉上游源码、构建镜像、跑前后端测试。作为测试，通过配置 Renovate 的自动合并以自动更新 `main` 分支
 - [`Publish Image`](./.github/workflows/publish.yml)
   监听 `main` 分支。`main` 有更新时发布 GHCR 镜像并创建 GitHub Release。
+- [`Trigger Renovate Dashboard`](./.github/workflows/renovate-dashboard-trigger.yml)
+  每 4 小时把 Renovate Dependency Dashboard(issue #2) 里的 `manual job` checkbox 勾上一次，用来主动触发新一轮 Renovate 运行。
 
 ### 镜像 tag 规则
 

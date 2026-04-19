@@ -6,13 +6,14 @@
 
 配置完成后，链路会是这样：
 
-1. Renovate 发现上游 release/tag 更新
-2. Renovate 更新 [`sources.lock.json`](../sources.lock.json)
-3. `renovate/**` 分支触发 [`Upstream Smoke`](../.github/workflows/upstream-smoke.yml)
-4. 冒烟通过后 Renovate 把更新直接写入 `main`(默认不会开 PR)
-5. `main` 提交触发 [`Publish Image`](../.github/workflows/publish.yml)
-6. 工作流把镜像推到 GHCR
-7. 工作流创建或更新这个仓库自己的 GitHub Release
+1. [`Trigger Renovate Dashboard`](../.github/workflows/renovate-dashboard-trigger.yml) 每 4 小时勾一次 Renovate Dependency Dashboard(issue #2) 里的 `manual job` checkbox
+2. Renovate 发现上游 release/tag 更新
+3. Renovate 更新 [`sources.lock.json`](../sources.lock.json)
+4. `renovate/**` 分支触发 [`Upstream Smoke`](../.github/workflows/upstream-smoke.yml)
+5. 冒烟通过后 Renovate 把更新直接写入 `main`(默认不会开 PR)
+6. `main` 提交触发 [`Publish Image`](../.github/workflows/publish.yml)
+7. 工作流把镜像推到 GHCR
+8. 工作流创建或更新这个仓库自己的 GitHub Release
 
 ## TL;DR
 
@@ -126,3 +127,23 @@
 - 确认 `main` 的分支保护策略和 `automergeType=branch` 不冲突
 - 手动触发一次 `Upstream Smoke`
 - 手动触发一次 `Publish Image`
+
+## 9. 定时触发 Renovate
+
+仓库内置了 [`Trigger Renovate Dashboard`](../.github/workflows/renovate-dashboard-trigger.yml)：
+
+- 触发频率：每 4 小时一次
+- 触发方式：编辑 issue `#2`，只把这一行 checkbox 改成勾选状态
+- 目标行：`- [ ] <!-- manual job -->Check this box to trigger a request for Renovate to run again on this repository`
+
+这样做的目的是兼容 Renovate Dependency Dashboard 现有的手动 rerun 入口。
+
+补充背景：
+
+- Renovate 官方 cloud 对这种“直接往分支提交并自动合并、而不是走 PR 合并”的仓库，状态通常只算 `onboarded`，不是 `activated`
+- 在这个状态下，Renovate 默认扫描频率通常是每天一次，不是 `activated` 常见的每 4 小时一次
+- 官方也没有提供一个稳定可用的 API 端点来直接触发 cloud 立即重跑
+
+因此这里选择用 GitHub Actions 定时去勾 dashboard 里的 `manual job` checkbox，等价于把原本的手工 rerun 自动化。
+
+如果以后 dashboard 里新增其他 checkbox，这个 workflow 不会碰它们；它只匹配 `manual job` 这一行固定文案。

@@ -30,7 +30,6 @@ jobs:
             const targetText = process.env.TARGET_TEXT;
 
             const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const uncheckedLine = `- [ ] <!-- manual job -->${targetText}`;
             const checkedLine = `- [x] <!-- manual job -->${targetText}`;
             const checkboxPattern = new RegExp(
               `- \\[[ xX]\\] <!-- manual job -->${escapeRegExp(targetText)}`
@@ -52,24 +51,14 @@ jobs:
               return;
             }
 
-            if (matchedLine !== uncheckedLine) {
-              const resetBody = originalBody.replace(checkboxPattern, uncheckedLine);
-
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: resetBody,
-              });
-
-              core.info(`Reset checkbox in issue #${issueNumber} to unchecked.`);
+            if (matchedLine === checkedLine) {
+              core.info(
+                `Checkbox in issue #${issueNumber} is already checked; Renovate will handle unchecking. Skipping.`
+              );
+              return;
             }
 
-            const latestBody =
-              matchedLine === uncheckedLine
-                ? originalBody
-                : originalBody.replace(checkboxPattern, uncheckedLine);
-            const nextBody = latestBody.replace(uncheckedLine, checkedLine);
+            const nextBody = originalBody.replace(checkboxPattern, checkedLine);
 
             await github.rest.issues.update({
               owner: context.repo.owner,

@@ -1,0 +1,70 @@
+name: Trigger Renovate Dashboard
+
+on:
+  # Renovate Cloud treats branch-automerge repositories like this one as
+  # "onboarded" instead of "activated", so the default run cadence stays daily.
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: renovate-dashboard-trigger
+  cancel-in-progress: true
+
+permissions:
+  issues: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Toggle Dependency Dashboard rerun checkbox
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: "2"
+          TARGET_TEXT: "Check this box to trigger a request for Renovate to run again on this repository"
+        with:
+          script: |
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const targetText = process.env.TARGET_TEXT;
+
+            const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const checkedLine = `- [x] <!-- manual job -->${targetText}`;
+            const checkboxPattern = new RegExp(
+              `- \\[[ xX]\\] <!-- manual job -->${escapeRegExp(targetText)}`
+            );
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+
+            const originalBody = issue.body ?? '';
+            const matchedLine = originalBody.match(checkboxPattern)?.[0];
+
+            if (!matchedLine) {
+              core.setFailed(
+                `Could not find the Renovate rerun checkbox in issue #${issueNumber}.`
+              );
+              return;
+            }
+
+            if (matchedLine === checkedLine) {
+              core.info(
+                `Checkbox in issue #${issueNumber} is already checked; Renovate will handle unchecking. Skipping.`
+              );
+              return;
+            }
+
+            const nextBody = originalBody.replace(checkboxPattern, checkedLine);
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: nextBody,
+            });
+
+            core.info(`Checked the Renovate rerun checkbox in issue #${issueNumber}.`);

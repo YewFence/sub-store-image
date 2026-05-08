@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -38,7 +38,7 @@ COPY Sub-Store/backend/ ./
 
 RUN pnpm bundle:esbuild && pnpm prune --prod
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 
 ENV NODE_ENV=production
 ENV SUB_STORE_DOCKER=true

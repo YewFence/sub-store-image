@@ -1,2 +1,68 @@
 [tools]
 "npm:actions-up" = "latest"
+
+[tasks.default]
+description = "列出可用任务"
+run = "mise tasks ls"
+
+[tasks.sync]
+run = "node scripts/sync-upstreams.mjs"
+
+[tasks.licenses]
+depends = ["sync"]
+run = "node scripts/collect-licenses.mjs"
+
+[tasks._prepare-build]
+hide = true
+depends = ["licenses"]
+
+[tasks.build]
+depends = ["_prepare-build"]
+usage = '''
+flag "--image <image>" default="sub-store:dev"
+'''
+run = 'node scripts/docker-build.mjs --tag "${usage_image?}"'
+shell = "bash -euo pipefail -c"
+
+[tasks.smoke]
+depends = ["_prepare-build"]
+usage = '''
+flag "--image <image>" default="sub-store:dev"
+flag "--port <port>" default="38080"
+'''
+run = [
+  'node scripts/docker-build.mjs --tag "${usage_image?}"',
+  'node scripts/run-smoke.mjs --image "${usage_image?}" --port "${usage_port?}"',
+]
+shell = "bash -euo pipefail -c"
+
+[tasks.metadata]
+depends = ["sync"]
+run = "node scripts/upstream-metadata.mjs"
+
+[tasks.publish-metadata]
+depends = ["sync"]
+usage = '''
+flag "--image <image>" default="sub-store"
+flag "--build-number <build_number>" default="local"
+'''
+run = 'node scripts/publish-metadata.mjs --image "${usage_image?}" --build-number "${usage_build_number?}"'
+shell = "bash -euo pipefail -c"
+
+[tasks.publish]
+depends = ["_prepare-build"]
+usage = '''
+flag "--image <image>" default="sub-store"
+flag "--build-number <build_number>" default="local"
+'''
+run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --build-number "${usage_build_number?}"'
+shell = "bash -euo pipefail -c"
+
+[tasks.publish-push]
+depends = ["_prepare-build"]
+usage = '''
+flag "--image <image>" default="sub-store"
+flag "--build-number <build_number>" default="local"
+'''
+run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --build-number "${usage_build_number?}" --push'
+shell = "bash -euo pipefail -c"

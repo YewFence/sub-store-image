@@ -2,8 +2,11 @@ FROM node:24-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-RUN corepack enable
+ARG PNPM_VERSION=10
+
+RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 FROM base AS frontend-builder
 

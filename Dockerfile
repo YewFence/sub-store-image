@@ -4,7 +4,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-ARG PNPM_VERSION=10
+ARG PNPM_VERSION=11
 
 RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
@@ -15,7 +15,7 @@ WORKDIR /build/frontend
 COPY Sub-Store-Front-End/package.json ./
 COPY Sub-Store-Front-End/pnpm-lock.yaml ./
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 COPY Sub-Store-Front-End/ ./
 
@@ -35,7 +35,7 @@ COPY Sub-Store/backend/package.json ./
 COPY Sub-Store/backend/pnpm-lock.yaml ./
 COPY Sub-Store/backend/patches ./patches
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 COPY Sub-Store/backend/ ./
 

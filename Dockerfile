@@ -14,6 +14,8 @@ WORKDIR /build/frontend
 
 COPY Sub-Store-Front-End/package.json ./
 COPY Sub-Store-Front-End/pnpm-lock.yaml ./
+COPY Sub-Store-Front-End/pnpm-workspace.yaml ./
+COPY Sub-Store-Front-End/.npmrc ./
 
 RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
@@ -33,6 +35,7 @@ WORKDIR /build/backend
 
 COPY Sub-Store/backend/package.json ./
 COPY Sub-Store/backend/pnpm-lock.yaml ./
+COPY Sub-Store/backend/pnpm-workspace.yaml ./
 COPY Sub-Store/backend/patches ./patches
 
 RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds

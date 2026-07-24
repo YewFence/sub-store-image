@@ -5,7 +5,7 @@
       "depName": "sub-store-org/Sub-Store",
       "datasource": "github-releases",
       "versioning": "semver",
-      "currentValue": "2.36.20",
+      "currentValue": "2.36.21",
       "cloneDir": "Sub-Store"
     },
     {

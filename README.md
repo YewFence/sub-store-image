@@ -55,9 +55,9 @@ docker compose --profile public up -d
 
 ```bash
 # 下载上游源码
-just sync
+mise run sync
 # 下载上游许可证
-just licenses
+mise run licenses
 docker compose -f compose.dev.yaml up -d --build
 ```
 
@@ -93,6 +93,8 @@ http://127.0.0.1:3000
 
 ## 从上游源码构建镜像与发布
 
+所有任务通过 [mise](https://mise.jdx.dev/) 管理，在仓库根目录运行 `mise` 可查看全部任务。
+
 ### 克隆仓库
 
 ```bash
@@ -102,49 +104,49 @@ git clone https://github.com/YewFence/sub-store-image.git
 ### 同步上游源码
 
 ```bash
-just sync
+mise run sync
 ```
 
 ### 本地构建镜像
 
 ```bash
-just build
+mise run build
 ```
 
 可自定义镜像名：
 
 ```bash
-just build ghcr.io/your-name/sub-store:test
+mise run build --image ghcr.io/your-name/sub-store:test
 ```
 
 ### 运行基础测试
 
 ```bash
-just smoke
+mise run smoke
 ```
 
 可指定镜像和端口：
 
 ```bash
-just smoke sub-store:smoke 38080
+mise run smoke --image sub-store:smoke --port 38080
 ```
 
 ### 查看上游版本信息
 
 ```bash
-just metadata
+mise run metadata
 ```
 
 ### 预览发布流程生成的信息
 
 ```bash
-just publish-metadata ghcr.io/your-name/sub-store
+mise run publish-metadata --image ghcr.io/your-name/sub-store
 ```
 
 ### 本地构建发布用的镜像
 
 ```bash
-just publish ghcr.io/your-name/sub-store
+mise run publish --image ghcr.io/your-name/sub-store
 ```
 
 会生成这些 tag：
@@ -166,7 +168,7 @@ docker login ghcr.io
 然后推送：
 
 ```bash
-just publish-push ghcr.io/your-name/sub-store
+mise run publish-push --image ghcr.io/your-name/sub-store
 ```
 
 ## 仓库结构
@@ -177,8 +179,8 @@ just publish-push ghcr.io/your-name/sub-store
   Renovate 配置，负责自动更新上游版本。
 - [`scripts/`](./scripts)
   本地和 CI 共用的脚本，包括同步、构建、测试、发布。
-- [`justfile`](./justfile)
-  命令快捷执行入口。
+- [`mise.toml`](./mise.toml)
+  mise 任务入口（sync / build / smoke / publish 等）。
 - [`compose.yaml`](./compose.yaml)
   生产环境用的 compose 配置。
 - [`compose.dev.yaml`](./compose.dev.yaml)

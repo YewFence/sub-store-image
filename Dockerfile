@@ -41,6 +41,7 @@ COPY Sub-Store/backend/patches ./patches
 RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 COPY Sub-Store/backend/ ./
+COPY Sub-Store/.node-version /build/.node-version
 
 RUN pnpm bundle:esbuild && pnpm prune --prod
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["custom.regex"],
+  "enabledManagers": ["custom.regex", "github-actions"],
   "customManagers": [
     {
       "customType": "regex",
@@ -19,6 +19,13 @@
       "matchFileNames": ["sources.lock.json"],
       "groupName": "sub-store-upstreams",
       "groupSlug": "sub-store-upstreams",
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "groupSlug": "github-actions",
       "automerge": true,
       "automergeType": "branch"
     }

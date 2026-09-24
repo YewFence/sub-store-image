@@ -1,5 +1,3 @@
-[tools]
-"npm:actions-up" = "latest"
 
 [tasks.default]
 description = "列出可用任务"
@@ -63,3 +61,6 @@ flag "--image <image>" default="sub-store"
 '''
 run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --push'
 shell = "bash -euo pipefail -c"
+
+[tools]
+pinact = "latest"

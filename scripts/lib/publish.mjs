@@ -34,7 +34,6 @@ export function formatReleaseDate(date = new Date()) {
 
 export function resolveBuildTag({
   buildTag,
-  buildNumber,
   now = new Date(),
 } = {}) {
   const releaseDate = formatReleaseDate(now);
@@ -46,15 +45,21 @@ export function resolveBuildTag({
     };
   }
 
-  const suffix =
-    typeof buildNumber === "string" && buildNumber.trim() !== ""
-      ? buildNumber.trim()
-      : "local";
-
   return {
     releaseDate,
-    buildTag: `${releaseDate}.${suffix}`,
+    buildTag: releaseDate,
   };
+}
+
+function resolvePackageName(imageName) {
+  const withoutRegistry = imageName.replace(/^ghcr\.io\//i, "");
+  const segments = withoutRegistry.split("/");
+
+  if (segments.length < 2) {
+    return "";
+  }
+
+  return segments.slice(1).join("/");
 }
 
 export function resolveReleaseUrl({
@@ -153,7 +158,6 @@ export function buildImageTagMap(
 export async function resolvePublishMetadata({
   imageName = "sub-store",
   buildTag,
-  buildNumber,
   createdAt,
   releaseUrl,
   releaseBaseUrl,
@@ -163,7 +167,6 @@ export async function resolvePublishMetadata({
   const normalizedImageName = validateImageName(imageName);
   const { releaseDate, buildTag: resolvedBuildTag } = resolveBuildTag({
     buildTag,
-    buildNumber,
   });
   const resolvedCreatedAt =
     typeof createdAt === "string" && createdAt.trim() !== ""
@@ -200,6 +203,7 @@ export async function resolvePublishMetadata({
 export function createPublishOutput(metadata, extra = {}) {
   const output = {
     image_name: metadata.imageName,
+    package_name: resolvePackageName(metadata.imageName),
     created_at: metadata.createdAt,
     release_date: metadata.releaseDate,
     build_tag: metadata.buildTag,

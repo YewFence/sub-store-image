@@ -150,7 +150,7 @@ just publish ghcr.io/your-name/sub-store
 会生成这些 tag：
 
 - `latest`
-- `YYYY.MM.DD.local`
+- `YYYY.MM.DD`
 - `b<backendVersion>-f<frontendVersion>`
 - `backend-<backendVersion>-frontend-<frontendVersion>`
 - `sha-<backendSha7>-<frontendSha7>`
@@ -211,16 +211,18 @@ just publish-push ghcr.io/your-name/sub-store
 发布时会同时打几层 tag：
 
 - `latest`
-- `YYYY.MM.DD.<run_number>`
+- `YYYY.MM.DD`
 - `b<backendVersion>-f<frontendVersion>`
 - `backend-<backendVersion>-frontend-<frontendVersion>`
 - `sha-<backendSha7>-<frontendSha7>`
 
 这些 tag 的用途大概是：
 
-- 日期 tag 方便人工查阅，也适合在文档中引用
+- 日期 tag 方便人工查阅，也适合在文档中引用；三段 `YYYY.MM.DD` 格式能被 Renovate 这类基于 semver 的更新检查器正确比较
 - `b...-f...` 用于快速确认上游版本组合
 - `sha-...` 用于精确溯源
+
+GHCR 上只保留最近 20 个镜像版本。每次发布完成后，workflow 会用 [`actions/delete-package-versions`](https://github.com/actions/delete-package-versions) 删除更老的版本，旧的日期 tag 和旧组合 tag 会随之消失。
 
 除了 tag，镜像 labels 和 GitHub Release 里还会包含：
 

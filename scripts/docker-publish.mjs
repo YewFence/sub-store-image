@@ -38,12 +38,6 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (current === "--build-number") {
-      args.buildNumber = argv[index + 1] ?? "";
-      index += 1;
-      continue;
-    }
-
     if (current === "--created-at") {
       args.createdAt = argv[index + 1] ?? "";
       index += 1;

@@ -13,6 +13,7 @@
 5. `main` 提交触发 [`Publish Image`](../.github/workflows/publish.yml)
 6. 工作流把镜像推到 GHCR
 7. 工作流创建或更新这个仓库自己的 GitHub Release
+8. 工作流删除 GHCR 上过老的镜像版本，只保留最近 20 个
 
 ## TL;DR
 
@@ -49,7 +50,7 @@
 这套 workflow 已经在文件里显式声明了权限，无需多余步骤，此处给出各个权限的说明：
 
 - `contents: write` ：用来创建 GitHub Release
-- `packages: write` ：用来发布 GHCR 镜像
+- `packages: write` ：用来发布 GHCR 镜像，并删除过老的镜像版本
 - `issues: write` ：用来在自动化异常时开 issue
 
 官方文档：

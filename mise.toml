@@ -44,25 +44,22 @@ run = "node scripts/upstream-metadata.mjs"
 depends = ["sync"]
 usage = '''
 flag "--image <image>" default="sub-store"
-flag "--build-number <build_number>" default="local"
 '''
-run = 'node scripts/publish-metadata.mjs --image "${usage_image?}" --build-number "${usage_build_number?}"'
+run = 'node scripts/publish-metadata.mjs --image "${usage_image?}"'
 shell = "bash -euo pipefail -c"
 
 [tasks.publish]
 depends = ["_prepare-build"]
 usage = '''
 flag "--image <image>" default="sub-store"
-flag "--build-number <build_number>" default="local"
 '''
-run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --build-number "${usage_build_number?}"'
+run = 'node scripts/docker-publish.mjs --image "${usage_image?}"'
 shell = "bash -euo pipefail -c"
 
 [tasks.publish-push]
 depends = ["_prepare-build"]
 usage = '''
 flag "--image <image>" default="sub-store"
-flag "--build-number <build_number>" default="local"
 '''
-run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --build-number "${usage_build_number?}" --push'
+run = 'node scripts/docker-publish.mjs --image "${usage_image?}" --push'
 shell = "bash -euo pipefail -c"

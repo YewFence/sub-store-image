@@ -55,7 +55,6 @@ jobs:
         run: |
           node scripts/publish-metadata.mjs \
             --image "ghcr.io/${GITHUB_REPOSITORY,,}" \
-            --build-number "${GITHUB_RUN_NUMBER}" \
             --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag" \
             --format github-output >> "$GITHUB_OUTPUT"
 
@@ -172,6 +171,16 @@ jobs:
               core.info(`Created release ${tag}`);
             }
 
+      - name: Delete old image versions
+        id: prune
+        if: steps.release.outcome == 'success'
+        continue-on-error: true
+        uses: actions/delete-package-versions@e5bc658cc4c965c472fe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: ${{ steps.publish_meta.outputs.package_name }}
+          package-type: container
+          min-versions-to-keep: 20
+
       - name: Classify result
         id: classify
         if: always()
@@ -198,6 +207,9 @@ jobs:
           elif [[ "${{ steps.release.outcome }}" == "failure" ]]; then
             failure_type="automation-error"
             failed_step="release"
+          elif [[ "${{ steps.prune.outcome }}" == "failure" ]]; then
+            failure_type="automation-error"
+            failed_step="prune"
           fi
 
           echo "failure_type=${failure_type}" >> "$GITHUB_OUTPUT"
@@ -221,6 +233,7 @@ jobs:
             echo "- SHA matrix: \`${{ steps.publish_meta.outputs.sha_matrix || 'n/a' }}\`"
             echo "- Image: \`${{ steps.publish_meta.outputs.image_name || 'n/a' }}\`"
             echo "- Digest: \`${{ steps.build_push.outputs.digest || 'n/a' }}\`"
+            echo "- Prune outcome: \`${{ steps.prune.outcome || 'skipped' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create or update automation issue

@@ -137,8 +137,8 @@ async function assertFrontend(baseUrl) {
   }
 
   const html = await response.text();
-  if (!html.includes("<title>Sub Store</title>")) {
-    throw new Error("首页缺少预期标题 <title>Sub Store</title>");
+  if (!html.includes("<title>Sub-Store</title>")) {
+    throw new Error("首页缺少预期标题 <title>Sub-Store</title>");
   }
 }
 

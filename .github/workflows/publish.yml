@@ -8,7 +8,7 @@ on:
       - ".dockerignore"
       - ".github/workflows/publish.yml"
       - "Dockerfile"
-      - "justfile"
+      - "mise.toml"
       - "renovate.json"
       - "scripts/**"
       - "sources.lock.json"
@@ -112,7 +112,7 @@ jobs:
               '',
               '## Image',
               '',
-              `- Package: \`${process.env.IMAGE_NAME}\``,
+              `- Package: [${process.env.IMAGE_NAME}](https://${process.env.IMAGE_NAME})`,
               `- Digest: \`${process.env.IMAGE_DIGEST}\``,
               `- Pull: \`docker pull ${process.env.IMAGE_NAME}:${tag}\``,
               `- Combo tag: \`${process.env.COMBO_TAG}\``,
